@@ -130,6 +130,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("DefaultCorsPolicy");
 app.UseAuthorization();
+
+// Production health check
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "ok"
+}));
+
 app.MapControllers();
 
 app.Run();
