@@ -12,7 +12,7 @@ class AppConfig {
   static int devBackendPort = 8080;
 
   /// Default production public HTTPS backend URL.
-  static String productionBackendUrl = 'https://krishi-mitra-otp-api.onrender.com';
+  static String productionBackendUrl = 'https://krishi-mitra-d6pl.onrender.com';
 
   /// Custom override for backend base URL if set at runtime.
   static String _customBackendBaseUrl = '';

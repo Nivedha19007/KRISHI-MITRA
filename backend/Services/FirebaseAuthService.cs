@@ -44,14 +44,22 @@ public class FirebaseAuthService : IFirebaseAuthService
             {
                 _logger.LogInformation("[DIAGNOSTIC 3] FirebaseAuth.GetUserAsync(uid) found existing user: FALSE");
                 _logger.LogInformation("[FIREBASE_AUTH] User not found. Creating new Firebase Auth user for UID: {Uid}...", uid);
-                var args = new UserRecordArgs
+                try
                 {
-                    Uid = uid,
-                    PhoneNumber = normalizedPhone,
-                    Disabled = false
-                };
-                userRecord = await FirebaseAuth.DefaultInstance.CreateUserAsync(args, ct);
-                _logger.LogInformation("[DIAGNOSTIC 4] CreateUserAsync(uid) created new user: TRUE (UID: {Uid})", userRecord.Uid);
+                    var args = new UserRecordArgs
+                    {
+                        Uid = uid,
+                        PhoneNumber = normalizedPhone,
+                        Disabled = false
+                    };
+                    userRecord = await FirebaseAuth.DefaultInstance.CreateUserAsync(args, ct);
+                    _logger.LogInformation("[DIAGNOSTIC 4] CreateUserAsync(uid) created new user: TRUE (UID: {Uid})", userRecord.Uid);
+                }
+                catch (Exception createEx) when (createEx.Message.Contains("PHONE_NUMBER_EXISTS"))
+                {
+                    _logger.LogInformation("[FIREBASE_AUTH] Phone number already exists. Fetching existing user by phone number...");
+                    userRecord = await FirebaseAuth.DefaultInstance.GetUserByPhoneNumberAsync(normalizedPhone, ct);
+                }
             }
 
             string customToken = await FirebaseAuth.DefaultInstance.CreateCustomTokenAsync(userRecord.Uid, ct);

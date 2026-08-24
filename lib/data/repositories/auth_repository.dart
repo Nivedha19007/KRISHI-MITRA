@@ -335,13 +335,13 @@ class AuthRepository {
       debugPrint('[AUTH_LOG_ERROR] Exception calling backend /api/otp/send: $e');
       onVerificationFailed(fb.FirebaseAuthException(
         code: 'network-error',
-        message: 'Could not connect to backend server at ${AppConfig.backendBaseUrl}. Please verify PC Wi-Fi IP and backend status.',
+        message: 'Could not connect to backend server at ${AppConfig.backendBaseUrl}. Please check your internet connection.',
       ));
     }
   }
 
   // ============================================================
-  // FARMER LOGIN WITH PHONE OTP & NAME VERIFICATION (Backend DEMO OTP)
+  // FARMER LOGIN WITH PHONE OTP & NAME VERIFICATION (.NET Backend DEMO OTP)
   // ============================================================
 
   Future<UserModel> loginFarmerWithPhoneOtp({
@@ -387,20 +387,13 @@ class AuthRepository {
     // 2. Backend OTP Verification Succeeded!
     debugPrint('[AUTH_LOG] Backend OTP verification succeeded for phone: $phone');
 
-    // 3. Check for Firebase Custom Token returned by Backend
+    // 3. Sign in to Firebase Authentication using Custom Token returned by Backend
     try {
       final resData = jsonDecode(response.body);
       final customToken = resData['customToken'] as String?;
-      final hasCustomToken = customToken != null && customToken.isNotEmpty;
-      debugPrint('[DIAGNOSTIC 6] API response contains customToken: $hasCustomToken');
-      if (hasCustomToken) {
-        debugPrint('[DIAGNOSTIC 7] signInWithCustomToken() called: true');
+      if (customToken != null && customToken.isNotEmpty) {
         await _auth.signInWithCustomToken(customToken);
-        debugPrint('[AUTH_LOG] Firebase Custom Token sign-in succeeded!');
-        debugPrint('[DIAGNOSTIC 8] FirebaseAuth.instance.currentUser?.uid: ${_auth.currentUser?.uid}');
-        debugPrint('[DIAGNOSTIC 9] Firebase user phone number: ${_auth.currentUser?.phoneNumber}');
-      } else {
-        debugPrint('[DIAGNOSTIC 7] signInWithCustomToken() called: false (customToken is missing or empty)');
+        debugPrint('[AUTH_LOG] Firebase Custom Token sign-in succeeded! UID: ${_auth.currentUser?.uid}');
       }
     } catch (e) {
       debugPrint('[AUTH_LOG_WARN] Custom Token sign-in exception: $e');
@@ -420,7 +413,6 @@ class AuthRepository {
         data = querySnapshot.docs.first.data();
         userUid = querySnapshot.docs.first.id;
       } else {
-        // Search by raw phone format or list
         final allDocs = await _firestore.collection('users').get();
         for (var doc in allDocs.docs) {
           final docPhone = (doc.data()['phone'] as String?) ?? '';
@@ -436,7 +428,6 @@ class AuthRepository {
     }
 
     if (data == null) {
-      // Create default farmer profile if not existing in Firestore
       final newFarmer = UserModel(
         uid: userUid,
         name: farmerName.trim(),
@@ -533,16 +524,9 @@ class AuthRepository {
     try {
       final resData = jsonDecode(response.body);
       final customToken = resData['customToken'] as String?;
-      final hasCustomToken = customToken != null && customToken.isNotEmpty;
-      debugPrint('[DIAGNOSTIC 6] API response contains customToken: $hasCustomToken');
-      if (hasCustomToken) {
-        debugPrint('[DIAGNOSTIC 7] signInWithCustomToken() called: true');
+      if (customToken != null && customToken.isNotEmpty) {
         await _auth.signInWithCustomToken(customToken);
-        debugPrint('[AUTH_LOG] Firebase Custom Token sign-in succeeded!');
-        debugPrint('[DIAGNOSTIC 8] FirebaseAuth.instance.currentUser?.uid: ${_auth.currentUser?.uid}');
-        debugPrint('[DIAGNOSTIC 9] Firebase user phone number: ${_auth.currentUser?.phoneNumber}');
-      } else {
-        debugPrint('[DIAGNOSTIC 7] signInWithCustomToken() called: false (customToken is missing or empty)');
+        debugPrint('[AUTH_LOG] Firebase Custom Token sign-in succeeded! UID: ${_auth.currentUser?.uid}');
       }
     } catch (e) {
       debugPrint('[AUTH_LOG_WARN] Custom Token sign-in exception: $e');
