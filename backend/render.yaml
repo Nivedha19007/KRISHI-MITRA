@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: krishi-mitra-otp-api
+    runtime: docker
+    dockerContext: backend
+    dockerfilePath: backend/Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: OTP_MODE
+        value: demo
+      - key: ALLOWED_ORIGINS
+        value: "https://krishi-mitra-38a5f.web.app,https://krishi-mitra-38a5f.firebaseapp.com"

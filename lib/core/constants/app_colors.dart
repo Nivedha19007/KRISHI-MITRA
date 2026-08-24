@@ -32,4 +32,3 @@ class AppColors {
   static const Color textSecondary = Color(0xFF475569);
   static const Color textMuted = Color(0xFF94A3B8);
 }
-

@@ -1,4 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 enum UserRole { farmer, customer, admin }
+
 enum VerificationStatus { pending, verified, rejected }
 
 class UserModel {
@@ -48,13 +51,23 @@ class UserModel {
   }
 
   factory UserModel.fromMap(Map<String, dynamic> map, String id) {
+    DateTime parseDate(dynamic val) {
+      if (val is Timestamp) return val.toDate();
+      if (val is String) return DateTime.tryParse(val) ?? DateTime.now();
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      return DateTime.now();
+    }
+
+    final rawRole = (map['role'] ?? '').toString().trim().toLowerCase();
+    final rawStatus = (map['verificationStatus'] ?? '').toString().trim().toLowerCase();
+
     return UserModel(
       uid: id,
       name: map['name'] ?? '',
       email: map['email'] ?? '',
       phone: map['phone'] ?? '',
       role: UserRole.values.firstWhere(
-        (e) => e.name == map['role'],
+        (e) => e.name.toLowerCase() == rawRole,
         orElse: () => UserRole.customer,
       ),
       state: map['state'] ?? 'Tamil Nadu',
@@ -62,13 +75,11 @@ class UserModel {
       village: map['village'] ?? '',
       farmerType: map['farmerType'] ?? 'Organic Farmer',
       verificationStatus: VerificationStatus.values.firstWhere(
-        (e) => e.name == map['verificationStatus'],
+        (e) => e.name.toLowerCase() == rawStatus,
         orElse: () => VerificationStatus.pending,
       ),
       profileImage: map['profileImage'],
-      createdAt: map['createdAt'] != null
-          ? DateTime.parse(map['createdAt'])
-          : DateTime.now(),
+      createdAt: parseDate(map['createdAt']),
     );
   }
 

@@ -1,114 +1,372 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../datasources/sample_data.dart';
 import '../models/order_model.dart';
+import '../models/review_model.dart';
+
+class FarmerStats {
+  final double totalRevenue;
+  final int totalOrders;
+  final int pendingOrders;
+  final int completedOrders;
+  final double totalProductsSold;
+  final double averageRating;
+  final int totalReviews;
+
+  FarmerStats({
+    required this.totalRevenue,
+    required this.totalOrders,
+    required this.pendingOrders,
+    required this.completedOrders,
+    required this.totalProductsSold,
+    required this.averageRating,
+    required this.totalReviews,
+  });
+}
 
 class OrderRepository {
-  final List<OrderModel> _orders = [
-    OrderModel(
-      id: 'ord_1001',
-      customerId: 'customer_priya',
-      customerName: 'Priya Sharma',
-      farmerId: 'farmer_arun',
-      farmerName: 'Arun Kumar',
-      productId: 'prod_1',
-      productName: 'Country Tomato',
-      variety: 'Country Red',
-      quantity: 5.0,
-      unit: 'kg',
-      pricePerUnit: 24.0,
-      totalAmount: 120.0,
-      paymentStatus: 'Payment Successful (Online Pay)',
-      orderStatus: 'Delivered',
-      deliveryAddress: 'Flat 402, Green Avenue, Anna Nagar, Chennai, Tamil Nadu',
-      batchId: 'TOM-ERD-101',
-      rating: 5.0,
-      reviewText: 'Super fresh country tomatoes delivered straight from Arun farm! Highly recommended.',
-      reviewedAt: DateTime.now().subtract(const Duration(hours: 1)),
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-    ),
-    OrderModel(
-      id: 'ord_1002',
-      customerId: 'customer_priya',
-      customerName: 'Priya Sharma',
-      farmerId: 'farmer_arun',
-      farmerName: 'Arun Kumar',
-      productId: 'prod_2',
-      productName: 'Sona Masoori Rice',
-      variety: 'Sona Masoori Premium',
-      quantity: 10.0,
-      unit: 'kg',
-      pricePerUnit: 52.0,
-      totalAmount: 520.0,
-      paymentStatus: 'Cash on Delivery',
-      orderStatus: 'Dispatched 🚚',
-      deliveryAddress: 'Flat 402, Green Avenue, Anna Nagar, Chennai, Tamil Nadu',
-      batchId: 'RIC-CBE-004',
-      createdAt: DateTime.now().subtract(const Duration(hours: 6)),
-    ),
-  ];
+  final FirebaseFirestore _firestore;
+  final List<OrderModel> _localOrders = List<OrderModel>.from(
+    SampleData.sampleOrders,
+  );
+
+  OrderRepository({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  CollectionReference<Map<String, dynamic>> get _ordersCollection =>
+      _firestore.collection('orders');
+
+  // ============================================================
+  // PLACE ORDER (Requirement 8: Atomic Stock Transaction)
+  // ============================================================
+
+  Future<void> placeOrder(OrderModel order) async {
+    final currentAuthUid = fb.FirebaseAuth.instance.currentUser?.uid;
+    final effectiveCustomerId = (currentAuthUid != null && currentAuthUid.isNotEmpty)
+        ? currentAuthUid
+        : order.customerId;
+
+    final orderId = order.id.isNotEmpty
+        ? order.id
+        : 'ord_${DateTime.now().millisecondsSinceEpoch}';
+
+    final finalOrder = order.copyWith(
+      id: orderId,
+      customerId: effectiveCustomerId,
+    );
+
+    debugPrint('[ORDER_REPO] Starting atomic transaction for Order ID: $orderId');
+    debugPrint('[ORDER_REPO] Target Product ID: ${finalOrder.productId}');
+    debugPrint('[ORDER_REPO] Customer UID: $effectiveCustomerId | Farmer UID: ${finalOrder.farmerId}');
+
+    final productRef = _firestore.collection('products').doc(finalOrder.productId);
+    final orderRef = _ordersCollection.doc(orderId);
+
+    try {
+      await _firestore.runTransaction((transaction) async {
+        final productDoc = await transaction.get(productRef);
+
+        if (!productDoc.exists || productDoc.data() == null) {
+          throw Exception('Product document not found in Firestore.');
+        }
+
+        final productData = productDoc.data()!;
+        final currentStock = (productData['availableStock'] as num?)?.toDouble() ?? 0.0;
+
+        if (currentStock < finalOrder.quantity) {
+          throw Exception(
+            'Insufficient stock available. Requested: ${finalOrder.quantity}, Available: $currentStock',
+          );
+        }
+
+        final newStock = currentStock - finalOrder.quantity;
+        transaction.update(productRef, {
+          'availableStock': newStock,
+        });
+
+        transaction.set(orderRef, finalOrder.toMap(), SetOptions(merge: true));
+      });
+
+      _localOrders.insert(0, finalOrder);
+      debugPrint('[ORDER_REPO] Transaction succeeded! Stock deducted & order placed.');
+    } on FirebaseException catch (e) {
+      debugPrint('[ORDER_REPO_ERROR] Transaction failed: ${e.code} - ${e.message}');
+      throw Exception('Failed to place order [${e.code}]: ${e.message ?? "Permission denied."}');
+    } catch (e) {
+      debugPrint('[ORDER_REPO_ERROR] Transaction failed: $e');
+      rethrow;
+    }
+  }
+
+  // ============================================================
+  // UPDATE ORDER STATUS
+  // ============================================================
+
+  Future<void> updateOrderStatus(String orderId, String newStatus) async {
+    final idx = _localOrders.indexWhere((o) => o.id == orderId);
+    if (idx != -1) {
+      _localOrders[idx] = _localOrders[idx].copyWith(
+        orderStatus: newStatus,
+      );
+    }
+
+    try {
+      await _ordersCollection.doc(orderId).update({
+        'orderStatus': newStatus,
+        'status': newStatus,
+        'updatedAt': DateTime.now().toIso8601String(),
+      });
+      debugPrint('[ORDER_REPO] Order $orderId status updated to: $newStatus');
+    } on FirebaseException catch (e) {
+      debugPrint('[ORDER_REPO_ERROR] updateOrderStatus failed: ${e.code} - ${e.message}');
+      throw Exception('Failed to update order status: ${e.message ?? e.code}');
+    }
+  }
+
+  // ============================================================
+  // WATCH / GET ORDERS FOR USER
+  // ============================================================
 
   List<OrderModel> getOrdersForUser(String uid, bool isFarmer) {
     if (isFarmer) {
-      return _orders.where((o) => o.farmerId == uid || uid.isEmpty).toList();
-    } else {
-      return _orders.where((o) => o.customerId == uid || uid.isEmpty).toList();
+      return _localOrders.where((o) => o.farmerId == uid).toList();
     }
+    return _localOrders.where((o) => o.customerId == uid).toList();
   }
 
-  void placeOrder(OrderModel order) {
-    _orders.insert(0, order);
-  }
-
-  void updateOrderStatus(String orderId, String newStatus) {
-    final index = _orders.indexWhere((o) => o.id == orderId);
-    if (index != -1) {
-      _orders[index] = _orders[index].copyWith(orderStatus: newStatus);
+  Stream<List<OrderModel>> watchOrdersForUser(String uid, bool isFarmer) {
+    final authUid = fb.FirebaseAuth.instance.currentUser?.uid;
+    if (authUid == null || authUid.isEmpty || uid.isEmpty) {
+      return Stream.value(getOrdersForUser(uid, isFarmer));
     }
+
+    final queryField = isFarmer ? 'farmerId' : 'customerId';
+    final query = _ordersCollection.where(queryField, isEqualTo: uid);
+
+    return query.snapshots().map((snapshot) {
+      if (snapshot.docs.isNotEmpty) {
+        final remoteOrders = snapshot.docs.map((doc) {
+          final data = Map<String, dynamic>.from(doc.data());
+          for (final k in ['reviewedAt', 'createdAt', 'updatedAt', 'orderDate']) {
+            if (data[k] is Timestamp) {
+              data[k] = (data[k] as Timestamp).toDate().toIso8601String();
+            }
+          }
+          return OrderModel.fromMap(data, doc.id);
+        }).toList();
+
+        for (final o in remoteOrders) {
+          final idx = _localOrders.indexWhere((lo) => lo.id == o.id);
+          if (idx != -1) {
+            _localOrders[idx] = o;
+          } else {
+            _localOrders.insert(0, o);
+          }
+        }
+      }
+      return getOrdersForUser(uid, isFarmer);
+    }).handleError((e) {
+      debugPrint('[ORDER_REPO_WARN] watchOrdersForUser error: $e');
+      return getOrdersForUser(uid, isFarmer);
+    });
   }
 
-  void addOrderFeedback(String orderId, double rating, String reviewText) {
-    final index = _orders.indexWhere((o) => o.id == orderId);
-    if (index != -1) {
-      _orders[index] = _orders[index].copyWith(
+  Stream<List<OrderModel>> watchAllPlatformOrders() {
+    final authUser = fb.FirebaseAuth.instance.currentUser;
+    if (authUser == null) {
+      return Stream.value([]);
+    }
+
+    return _ordersCollection.snapshots().map((snapshot) {
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs.map((doc) {
+          final data = Map<String, dynamic>.from(doc.data());
+          for (final k in ['reviewedAt', 'createdAt', 'updatedAt', 'orderDate']) {
+            if (data[k] is Timestamp) {
+              data[k] = (data[k] as Timestamp).toDate().toIso8601String();
+            }
+          }
+          return OrderModel.fromMap(data, doc.id);
+        }).toList();
+      }
+      return List<OrderModel>.unmodifiable(_localOrders);
+    }).handleError((e) {
+      debugPrint('[ORDER_REPO_WARN] watchAllPlatformOrders error: $e');
+      return List<OrderModel>.unmodifiable(_localOrders);
+    });
+  }
+
+  // ============================================================
+  // REVIEWS & FEEDBACK
+  // ============================================================
+
+  Stream<List<ReviewModel>> watchReviewsForFarmer(String farmerId) {
+    final authUid = fb.FirebaseAuth.instance.currentUser?.uid;
+    if (authUid == null || authUid.isEmpty || farmerId.isEmpty) {
+      return Stream.value(<ReviewModel>[]);
+    }
+
+    return _firestore
+        .collection('reviews')
+        .where('farmerId', isEqualTo: farmerId)
+        .snapshots()
+        .map<List<ReviewModel>>((snapshot) {
+      if (snapshot.docs.isNotEmpty) {
+        return snapshot.docs
+            .map((doc) => ReviewModel.fromMap(doc.data(), doc.id))
+            .toList();
+      }
+      return <ReviewModel>[];
+    }).handleError((e) {
+      debugPrint('[ORDER_REPO_WARN] watchReviewsForFarmer error: $e');
+      return <ReviewModel>[];
+    });
+  }
+
+  Future<void> addOrderFeedback(
+    String orderId,
+    double rating,
+    String reviewText,
+  ) async {
+    final now = DateTime.now();
+    final idx = _localOrders.indexWhere((o) => o.id == orderId);
+    OrderModel? targetOrder;
+
+    if (idx != -1) {
+      _localOrders[idx] = _localOrders[idx].copyWith(
         rating: rating,
         reviewText: reviewText,
-        reviewedAt: DateTime.now(),
+        reviewedAt: now,
       );
+      targetOrder = _localOrders[idx];
+    }
+
+    try {
+      await _ordersCollection.doc(orderId).update({
+        'rating': rating,
+        'reviewText': reviewText,
+        'reviewedAt': now.toIso8601String(),
+      });
+
+      if (targetOrder != null) {
+        final reviewId = 'rev_${DateTime.now().millisecondsSinceEpoch}';
+        final review = ReviewModel(
+          id: reviewId,
+          orderId: orderId,
+          farmerId: targetOrder.farmerId,
+          customerId: targetOrder.customerId,
+          customerName: targetOrder.customerName,
+          productId: targetOrder.productId,
+          productName: targetOrder.productName,
+          rating: rating,
+          comment: reviewText,
+          createdAt: now,
+        );
+
+        await _firestore.collection('reviews').doc(reviewId).set(review.toMap());
+
+        final productId = targetOrder.productId;
+        final reviewsSnap = await _firestore
+            .collection('reviews')
+            .where('productId', isEqualTo: productId)
+            .get();
+
+        if (reviewsSnap.docs.isNotEmpty) {
+          final count = reviewsSnap.docs.length;
+          final sum = reviewsSnap.docs.fold<double>(
+            0.0,
+            (t, d) => t + ((d.data()['rating'] as num?)?.toDouble() ?? 0.0),
+          );
+          final avgRating = double.parse((sum / count).toStringAsFixed(1));
+
+          await _firestore.collection('products').doc(productId).update({
+            'rating': avgRating,
+            'reviewCount': count,
+          });
+        }
+      }
+    } on FirebaseException catch (e) {
+      debugPrint('[ORDER_REPO_ERROR] addOrderFeedback failed: ${e.code} - ${e.message}');
+      throw Exception('Failed to submit review: ${e.message ?? e.code}');
     }
   }
 }
+
+// ================================================================
+// RIVERPOD PROVIDERS
+// ================================================================
 
 final orderRepositoryProvider = Provider<OrderRepository>((ref) {
   return OrderRepository();
 });
 
-class OrdersNotifier extends StateNotifier<List<OrderModel>> {
-  final OrderRepository _repo;
-  final String _uid;
-  final bool _isFarmer;
+final customerOrdersStreamProvider =
+    StreamProvider.family<List<OrderModel>, String>((ref, customerId) {
+      final repo = ref.watch(orderRepositoryProvider);
+      return repo.watchOrdersForUser(customerId, false);
+    });
 
-  OrdersNotifier(this._repo, this._uid, this._isFarmer)
-      : super(_repo.getOrdersForUser(_uid, _isFarmer));
+final farmerOrdersStreamProvider =
+    StreamProvider.family<List<OrderModel>, String>((ref, farmerId) {
+      final repo = ref.watch(orderRepositoryProvider);
+      return repo.watchOrdersForUser(farmerId, true);
+    });
 
-  void placeOrder(OrderModel order) {
-    _repo.placeOrder(order);
-    state = _repo.getOrdersForUser(_uid, _isFarmer);
-  }
+final farmerReviewsStreamProvider =
+    StreamProvider.family<List<ReviewModel>, String>((ref, farmerId) {
+      final repo = ref.watch(orderRepositoryProvider);
+      return repo.watchReviewsForFarmer(farmerId);
+    });
 
-  void updateStatus(String orderId, String status) {
-    _repo.updateOrderStatus(orderId, status);
-    state = _repo.getOrdersForUser(_uid, _isFarmer);
-  }
-
-  void submitFeedback(String orderId, double rating, String reviewText) {
-    _repo.addOrderFeedback(orderId, rating, reviewText);
-    state = _repo.getOrdersForUser(_uid, _isFarmer);
-  }
-}
-
-final ordersProvider = StateNotifierProvider.family<OrdersNotifier, List<OrderModel>, Map<String, dynamic>>((ref, params) {
-  return OrdersNotifier(
-    ref.watch(orderRepositoryProvider),
-    params['uid'] as String,
-    params['isFarmer'] as bool,
-  );
+final allPlatformOrdersProvider = StreamProvider<List<OrderModel>>((ref) {
+  final repo = ref.watch(orderRepositoryProvider);
+  return repo.watchAllPlatformOrders();
 });
+
+final farmerStatisticsProvider =
+    Provider.family<FarmerStats, String>((ref, farmerId) {
+      final ordersAsync = ref.watch(farmerOrdersStreamProvider(farmerId));
+      final reviewsAsync = ref.watch(farmerReviewsStreamProvider(farmerId));
+
+      final orders = ordersAsync.value ?? [];
+      final reviews = reviewsAsync.value ?? [];
+
+      final totalRevenue = orders.fold<double>(
+        0.0,
+        (total, o) => total + o.totalAmount,
+      );
+      final totalOrders = orders.length;
+      final pendingOrders =
+          orders.where((o) => o.orderStatus != 'Delivered').length;
+      final completedOrders =
+          orders.where((o) => o.orderStatus == 'Delivered').length;
+      final totalProductsSold = orders.fold<double>(
+        0.0,
+        (total, o) => total + o.quantity,
+      );
+
+      final totalReviews = reviews.length;
+      final avgRating = totalReviews > 0
+          ? reviews.fold<double>(0.0, (total, r) => total + r.rating) /
+              totalReviews
+          : (orders.where((o) => o.rating != null).isNotEmpty
+              ? orders
+                      .where((o) => o.rating != null)
+                      .fold<double>(0.0, (total, o) => total + (o.rating ?? 0)) /
+                  orders.where((o) => o.rating != null).length
+              : 0.0);
+
+      return FarmerStats(
+        totalRevenue: totalRevenue,
+        totalOrders: totalOrders,
+        pendingOrders: pendingOrders,
+        completedOrders: completedOrders,
+        totalProductsSold: totalProductsSold,
+        averageRating: double.parse(avgRating.toStringAsFixed(1)),
+        totalReviews: totalReviews,
+      );
+    });

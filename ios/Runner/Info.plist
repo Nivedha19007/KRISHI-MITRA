@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>AgriConnect requires access to camera to take crop photos for product listings.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>AgriConnect requires access to photo library to upload crop photos for product listings.</string>
 </dict>
 </plist>

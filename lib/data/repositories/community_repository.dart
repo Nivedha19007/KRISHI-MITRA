@@ -90,6 +90,7 @@ class CommunityNotifier extends StateNotifier<List<PostModel>> {
   }
 }
 
-final communityProvider = StateNotifierProvider<CommunityNotifier, List<PostModel>>((ref) {
-  return CommunityNotifier(ref.watch(communityRepositoryProvider));
-});
+final communityProvider =
+    StateNotifierProvider<CommunityNotifier, List<PostModel>>((ref) {
+      return CommunityNotifier(ref.watch(communityRepositoryProvider));
+    });

@@ -13,7 +13,8 @@ class ProductModel {
   final double latitude;
   final double longitude;
   final String name; // Crop Name
-  final String category; // Crop Category: Vegetables, Fruits, Grains, Pulses, Spices
+  final String
+  category; // Crop Category: Vegetables, Fruits, Grains, Pulses, Spices
   final String variety; // Crop Variety: Country Tomato, Sona Masoori, etc.
   final double quantity; // Initial Quantity
   final double availableStock; // Available Stock
@@ -42,7 +43,7 @@ class ProductModel {
     required this.id,
     required this.farmerId,
     required this.farmerName,
-    this.farmerMobile = '+91 98765 43210',
+    this.farmerMobile = '',
     required this.state,
     required this.district,
     this.village = '',
@@ -57,27 +58,107 @@ class ProductModel {
     required this.unit,
     required this.pricePerUnit,
     required this.harvestDate,
-    this.qualityChecked = true,
-    this.packed = true,
+    this.qualityChecked = false,
+    this.packed = false,
     this.dispatched = false,
     required this.expectedDeliveryDate,
     required this.description,
     required this.imageUrls,
     this.certificateUrl,
-    this.certificateName = 'Organic India Certified #ORG-8821',
-    this.isOrganic = true,
-    this.isVerifiedFarmer = true,
-    this.certificationStatus = VerificationStatus.verified,
-    this.farmingType = 'Organic',
+    this.certificateName = '',
+    this.isOrganic = false,
+    this.isVerifiedFarmer = false,
+    this.certificationStatus = VerificationStatus.pending,
+    this.farmingType = 'Conventional',
     this.batchId,
     this.isPublished = true,
-    this.rating = 4.8,
-    this.reviewCount = 24,
+    this.rating = 0.0,
+    this.reviewCount = 0,
     DateTime? createdAt,
-  })  : latitude = latitude ?? DistanceCalculator.getCoordinatesForDistrict(district, state)[0],
-        longitude = longitude ?? DistanceCalculator.getCoordinatesForDistrict(district, state)[1],
-        availableStock = availableStock ?? quantity,
-        createdAt = createdAt ?? DateTime.now();
+  }) : latitude =
+           latitude ??
+           DistanceCalculator.getCoordinatesForDistrict(district, state)[0],
+       longitude =
+           longitude ??
+           DistanceCalculator.getCoordinatesForDistrict(district, state)[1],
+       availableStock = availableStock ?? quantity,
+       createdAt = createdAt ?? DateTime.now();
+
+  ProductModel copyWith({
+    String? id,
+    String? farmerId,
+    String? farmerName,
+    String? farmerMobile,
+    String? state,
+    String? district,
+    String? village,
+    String? location,
+    double? latitude,
+    double? longitude,
+    String? name,
+    String? category,
+    String? variety,
+    double? quantity,
+    double? availableStock,
+    String? unit,
+    double? pricePerUnit,
+    DateTime? harvestDate,
+    bool? qualityChecked,
+    bool? packed,
+    bool? dispatched,
+    DateTime? expectedDeliveryDate,
+    String? description,
+    List<String>? imageUrls,
+    String? certificateUrl,
+    String? certificateName,
+    bool? isOrganic,
+    bool? isVerifiedFarmer,
+    VerificationStatus? certificationStatus,
+    String? farmingType,
+    String? batchId,
+    bool? isPublished,
+    double? rating,
+    int? reviewCount,
+    DateTime? createdAt,
+  }) {
+    return ProductModel(
+      id: id ?? this.id,
+      farmerId: farmerId ?? this.farmerId,
+      farmerName: farmerName ?? this.farmerName,
+      farmerMobile: farmerMobile ?? this.farmerMobile,
+      state: state ?? this.state,
+      district: district ?? this.district,
+      village: village ?? this.village,
+      location: location ?? this.location,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      variety: variety ?? this.variety,
+      quantity: quantity ?? this.quantity,
+      availableStock: availableStock ?? this.availableStock,
+      unit: unit ?? this.unit,
+      pricePerUnit: pricePerUnit ?? this.pricePerUnit,
+      harvestDate: harvestDate ?? this.harvestDate,
+      qualityChecked: qualityChecked ?? this.qualityChecked,
+      packed: packed ?? this.packed,
+      dispatched: dispatched ?? this.dispatched,
+      expectedDeliveryDate: expectedDeliveryDate ?? this.expectedDeliveryDate,
+      description: description ?? this.description,
+      imageUrls: imageUrls ?? this.imageUrls,
+      certificateUrl: certificateUrl ?? this.certificateUrl,
+      certificateName: certificateName ?? this.certificateName,
+      isOrganic: isOrganic ?? this.isOrganic,
+      isVerifiedFarmer: isVerifiedFarmer ?? this.isVerifiedFarmer,
+      certificationStatus: certificationStatus ?? this.certificationStatus,
+      farmingType: farmingType ?? this.farmingType,
+      batchId: batchId ?? this.batchId,
+      isPublished: isPublished ?? this.isPublished,
+      rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -123,7 +204,10 @@ class ProductModel {
     final qty = (map['quantity'] as num?)?.toDouble() ?? 0.0;
     final dist = map['district'] ?? 'Coimbatore';
     final st = map['state'] ?? 'Tamil Nadu';
-    final defaultCoords = DistanceCalculator.getCoordinatesForDistrict(dist, st);
+    final defaultCoords = DistanceCalculator.getCoordinatesForDistrict(
+      dist,
+      st,
+    );
 
     return ProductModel(
       id: id,
@@ -143,7 +227,9 @@ class ProductModel {
       availableStock: (map['availableStock'] as num?)?.toDouble() ?? qty,
       unit: map['unit'] ?? 'kg',
       pricePerUnit: (map['pricePerUnit'] as num?)?.toDouble() ?? 0.0,
-      harvestDate: map['harvestDate'] != null ? DateTime.parse(map['harvestDate']) : DateTime.now(),
+      harvestDate: map['harvestDate'] != null
+          ? DateTime.parse(map['harvestDate'])
+          : DateTime.now(),
       qualityChecked: map['qualityChecked'] ?? true,
       packed: map['packed'] ?? true,
       dispatched: map['dispatched'] ?? false,
@@ -165,7 +251,9 @@ class ProductModel {
       isPublished: map['isPublished'] ?? true,
       rating: (map['rating'] as num?)?.toDouble() ?? 4.8,
       reviewCount: map['reviewCount'] ?? 12,
-      createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt']) : DateTime.now(),
+      createdAt: map['createdAt'] != null
+          ? DateTime.parse(map['createdAt'])
+          : DateTime.now(),
     );
   }
 }

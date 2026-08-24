@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/widgets/responsive_center.dart';
 
 class NotificationItem {
   final String id;
@@ -33,7 +34,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
     NotificationItem(
       id: 'n1',
       title: 'Order Status Update 🚚',
-      message: 'Your order for 5 kg Country Tomato (Batch: TOM-CBE-001) has been dispatched.',
+      message:
+          'Your order for 5 kg Country Tomato (Batch: TOM-CBE-001) has been dispatched.',
       timeAgo: '15 mins ago',
       icon: Icons.local_shipping,
       color: AppColors.primaryGreen,
@@ -41,7 +43,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
     NotificationItem(
       id: 'n2',
       title: 'Community Reply 💬',
-      message: 'Meena Patil replied to your post "Country Tomato leaf yellowing advice".',
+      message:
+          'Meena Patil replied to your post "Country Tomato leaf yellowing advice".',
       timeAgo: '1 hour ago',
       icon: Icons.forum,
       color: Colors.orange,
@@ -49,7 +52,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
     NotificationItem(
       id: 'n3',
       title: 'Mandi Price Alert 📈',
-      message: 'Tomato price in Gobichettipalayam Mandi increased by ₹2/kg to ₹24/kg.',
+      message:
+          'Tomato price in Gobichettipalayam Mandi increased by ₹2/kg to ₹24/kg.',
       timeAgo: '3 hours ago',
       icon: Icons.trending_up,
       color: Colors.blue,
@@ -57,7 +61,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
     NotificationItem(
       id: 'n4',
       title: 'Prediction Alert 🔮',
-      message: '30-day forecast for Country Tomato shows expected 40% price surge.',
+      message:
+          '30-day forecast for Country Tomato shows expected 40% price surge.',
       timeAgo: '5 hours ago',
       icon: Icons.auto_graph,
       color: Colors.purple,
@@ -81,35 +86,59 @@ class _NotificationScreenState extends State<NotificationScreen> {
           TextButton(
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('All notifications marked as read.')),
+                const SnackBar(
+                  content: Text('All notifications marked as read.'),
+                ),
               );
             },
-            child: const Text('Mark all read', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Mark all read',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(12),
-        itemCount: _notifications.length,
-        itemBuilder: (context, index) {
-          final item = _notifications[index];
+      body: ResponsiveCenter(
+        maxWidth: 800,
+        child: ListView.builder(
+          padding: const EdgeInsets.all(12),
+          itemCount: _notifications.length,
+          itemBuilder: (context, index) {
+            final item = _notifications[index];
 
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: item.color.withOpacity(0.15),
-                child: Icon(item.icon, color: item.color),
+            return Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: item.color.withValues(alpha: 0.15),
+                  child: Icon(item.icon, color: item.color),
+                ),
+                title: Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 17,
+                  ),
+                ),
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Text(
+                    item.message,
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                ),
+                trailing: Text(
+                  item.timeAgo,
+                  style: const TextStyle(fontSize: 13, color: Colors.grey),
+                ),
               ),
-              title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 4.0),
-                child: Text(item.message, style: const TextStyle(fontSize: 13)),
-              ),
-              trailing: Text(item.timeAgo, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

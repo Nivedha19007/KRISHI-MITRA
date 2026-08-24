@@ -6,6 +6,8 @@ import '../../core/constants/india_locations.dart';
 import '../../data/models/product_model.dart';
 import '../../data/repositories/cart_repository.dart';
 import '../../data/repositories/product_repository.dart';
+import '../../core/widgets/responsive_center.dart';
+import '../../core/widgets/smart_image.dart';
 import 'nearby_farmers_screen.dart';
 import 'product_detail_screen.dart';
 
@@ -22,16 +24,30 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   String _selectedDistrict = 'All';
   final _searchController = TextEditingController();
 
-  final List<String> _categories = ['All', 'Vegetables', 'Fruits', 'Grains', 'Pulses', 'Spices'];
+  final List<String> _categories = [
+    'All',
+    'Vegetables',
+    'Fruits',
+    'Grains',
+    'Pulses',
+    'Spices',
+  ];
 
   @override
   Widget build(BuildContext context) {
     final products = ref.watch(productsProvider);
 
     final filteredProducts = products.where((p) {
-      if (_selectedCategory != 'All' && p.category != _selectedCategory) return false;
-      if (_selectedState != 'All' && p.state != _selectedState) return false;
-      if (_selectedDistrict != 'All' && p.district != _selectedDistrict) return false;
+      if (!p.isPublished) return false;
+      if (_selectedCategory != 'All' && p.category != _selectedCategory) {
+        return false;
+      }
+      if (_selectedState != 'All' && p.state != _selectedState) {
+        return false;
+      }
+      if (_selectedDistrict != 'All' && p.district != _selectedDistrict) {
+        return false;
+      }
       if (_searchController.text.isNotEmpty) {
         final query = _searchController.text.trim().toLowerCase();
         final matchName = p.name.toLowerCase().contains(query);
@@ -39,10 +55,27 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         final matchFarmer = p.farmerName.toLowerCase().contains(query);
         final matchDistrict = p.district.toLowerCase().contains(query);
         final matchState = p.state.toLowerCase().contains(query);
-        if (!matchName && !matchVariety && !matchFarmer && !matchDistrict && !matchState) return false;
+        if (!matchName &&
+            !matchVariety &&
+            !matchFarmer &&
+            !matchDistrict &&
+            !matchState) {
+          return false;
+        }
       }
       return true;
     }).toList();
+
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = width >= 1200
+        ? 4
+        : (width >= 900 ? 3 : (width >= 600 ? 2 : 1));
+
+    final gridWidth = (width > 1400 ? 1400 : width) - 24;
+    final cardWidth =
+        (gridWidth - (12 * (crossAxisCount - 1))) / crossAxisCount;
+    final expectedHeight = (cardWidth * 9 / 16) + 210;
+    final aspectRatio = cardWidth / expectedHeight;
 
     return Scaffold(
       appBar: AppBar(
@@ -54,138 +87,186 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: Column(
-        children: [
-          // Filter & Search Header Card
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                // Nearby Farmers Banner
-                InkWell(
-                  onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => NearbyFarmersScreen(initialCropSearch: _searchController.text)));
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.mintBg,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.primaryGreen.withOpacity(0.3)),
+      body: ResponsiveCenter(
+        maxWidth: 1400,
+        child: Column(
+          children: [
+            // Filter & Search Header Card
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  // Nearby Farmers Banner
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => NearbyFarmersScreen(
+                            initialCropSearch: _searchController.text,
+                          ),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.mintBg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.primaryGreen.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.near_me,
+                            color: AppColors.primaryGreen,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '📍 Search Farmers by Distance Radius (5, 10, 20 km)',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryGreen,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.chevron_right,
+                            size: 20,
+                            color: AppColors.primaryGreen,
+                          ),
+                        ],
+                      ),
                     ),
+                  ),
+
+                  TextField(
+                    controller: _searchController,
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'Search by crop, farmer, district, state...',
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: AppColors.primaryGreen,
+                      ),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {});
+                              },
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        const Icon(Icons.near_me, color: AppColors.primaryGreen, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          '📍 Search Farmers by Distance Radius (5, 10, 20 km)',
-                          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
-                        ),
-                        const Spacer(),
-                        const Icon(Icons.chevron_right, size: 18, color: AppColors.primaryGreen),
-                      ],
-                    ),
-                  ),
-                ),
-
-                TextField(
-                  controller: _searchController,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    hintText: 'Search by crop, farmer, district, state...',
-                    prefixIcon: const Icon(Icons.search, color: AppColors.primaryGreen),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {});
-                            },
-                          )
-                        : null,
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      // Category Filter
-                      _buildDropdownFilter(
-                        label: 'Category',
-                        value: _selectedCategory,
-                        items: _categories,
-                        onChanged: (val) => setState(() => _selectedCategory = val!),
-                      ),
-                      const SizedBox(width: 8),
-
-                      // State Filter
-                      _buildDropdownFilter(
-                        label: 'State',
-                        value: _selectedState,
-                        items: ['All', ...IndiaLocations.statesAndUTs.take(12)],
-                        onChanged: (val) {
-                          if (val != null) {
-                            setState(() {
-                              _selectedState = val;
-                              _selectedDistrict = 'All';
-                            });
-                          }
-                        },
-                      ),
-                      const SizedBox(width: 8),
-
-                      // District Filter
-                      if (_selectedState != 'All')
+                        // Category Filter
                         _buildDropdownFilter(
-                          label: 'District',
-                          value: _selectedDistrict,
-                          items: ['All', ...IndiaLocations.getDistricts(_selectedState)],
-                          onChanged: (val) => setState(() => _selectedDistrict = val!),
+                          label: 'Category',
+                          value: _selectedCategory,
+                          items: _categories,
+                          onChanged: (val) =>
+                              setState(() => _selectedCategory = val!),
                         ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
+                        const SizedBox(width: 8),
 
-          // Marketplace Products Grid View
-          Expanded(
-            child: filteredProducts.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search_off, size: 60, color: Colors.grey.shade400),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No crops match your filter',
-                          style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                        // State Filter
+                        _buildDropdownFilter(
+                          label: 'State',
+                          value: _selectedState,
+                          items: [
+                            'All',
+                            ...IndiaLocations.statesAndUTs,
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedState = val;
+                                _selectedDistrict = 'All';
+                              });
+                            }
+                          },
                         ),
+                        const SizedBox(width: 8),
+
+                        // District Filter
+                        if (_selectedState != 'All')
+                          _buildDropdownFilter(
+                            label: 'District',
+                            value: _selectedDistrict,
+                            items: [
+                              'All',
+                              ...IndiaLocations.getDistricts(_selectedState),
+                            ],
+                            onChanged: (val) =>
+                                setState(() => _selectedDistrict = val!),
+                          ),
                       ],
                     ),
-                  )
-                : GridView.builder(
-                    padding: const EdgeInsets.all(12),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.62,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                    ),
-                    itemCount: filteredProducts.length,
-                    itemBuilder: (context, index) {
-                      final product = filteredProducts[index];
-                      return _buildMarketplaceProductCard(context, product);
-                    },
                   ),
-          ),
-        ],
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+
+            // Marketplace Products Grid View
+            Expanded(
+              child: filteredProducts.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_off,
+                            size: 60,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No crops match your filter',
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : GridView.builder(
+                      padding: const EdgeInsets.all(12),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: aspectRatio,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      itemCount: filteredProducts.length,
+                      itemBuilder: (context, index) {
+                        final product = filteredProducts[index];
+                        return _buildMarketplaceProductCard(context, product);
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -197,25 +278,36 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     required ValueChanged<String?> onChanged,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.mintBg,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primaryGreen.withOpacity(0.3)),
+        border: Border.all(
+          color: AppColors.primaryGreen.withValues(alpha: 0.3),
+        ),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: items.contains(value) ? value : items.first,
           isDense: true,
-          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
-          items: items.map((i) => DropdownMenuItem(value: i, child: Text('$label: $i'))).toList(),
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: AppColors.primaryGreen,
+          ),
+          items: items
+              .map((i) => DropdownMenuItem(value: i, child: Text('$label: $i')))
+              .toList(),
           onChanged: onChanged,
         ),
       ),
     );
   }
 
-  Widget _buildMarketplaceProductCard(BuildContext context, ProductModel product) {
+  Widget _buildMarketplaceProductCard(
+    BuildContext context,
+    ProductModel product,
+  ) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -231,21 +323,23 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Image with Badges
             Stack(
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  child: Image.network(
-                    product.imageUrls.isNotEmpty ? product.imageUrls.first : '',
-                    height: 110,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      height: 110,
-                      color: AppColors.mintBg,
-                      child: const Icon(Icons.eco, size: 44, color: AppColors.primaryGreen),
+                AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16),
+                    ),
+                    child: SmartImage(
+                      pathOrUrl: product.imageUrls.isNotEmpty
+                          ? product.imageUrls.first
+                          : '',
+                      width: double.infinity,
+                      fit: BoxFit.cover,
                     ),
                   ),
                 ),
@@ -254,15 +348,24 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     top: 6,
                     left: 6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.organicBg,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.organicTag.withOpacity(0.5)),
+                        border: Border.all(
+                          color: AppColors.organicTag.withValues(alpha: 0.5),
+                        ),
                       ),
                       child: Text(
                         '🌱 Organic',
-                        style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.organicTag),
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.organicTag,
+                        ),
                       ),
                     ),
                   ),
@@ -271,22 +374,30 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     top: 6,
                     right: 6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.verifiedBg,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         '✓ Verified',
-                        style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.verifiedGreen),
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.verifiedGreen,
+                        ),
                       ),
                     ),
                   ),
               ],
             ),
 
+            // Content Details
             Padding(
-              padding: const EdgeInsets.all(10.0),
+              padding: const EdgeInsets.all(12.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -295,93 +406,149 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     product.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimary),
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   Text(
                     'Variety: ${product.variety}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primaryGreen,
+                    ),
                   ),
                   const SizedBox(height: 4),
 
-                  // Farmer Name & Location (State, District, Village)
+                  // Farmer Name & Location
                   Row(
                     children: [
-                      const Icon(Icons.person_outline, size: 12, color: AppColors.textSecondary),
-                      const SizedBox(width: 2),
+                      const Icon(
+                        Icons.person_outline,
+                        size: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 3),
                       Expanded(
                         child: Text(
                           product.farmerName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 2),
                   Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.location_on_outlined, size: 12, color: AppColors.textSecondary),
-                      const SizedBox(width: 2),
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 3),
                       Expanded(
                         child: Text(
                           '${product.village.isNotEmpty ? "${product.village}, " : ""}${product.district}, ${product.state}',
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(fontSize: 10, color: AppColors.textSecondary),
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                            height: 1.2,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-
-                  // Rating & Stock
-                  Row(
-                    children: [
-                      const Icon(Icons.star, size: 13, color: Colors.amber),
-                      const SizedBox(width: 2),
-                      Text(
-                        '${product.rating}',
-                        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
-                      const Spacer(),
-                      Text(
-                        'Stock: ${product.availableStock.toInt()} ${product.unit}',
-                        style: GoogleFonts.inter(fontSize: 10, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
 
+                  // Rating & Stock
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.star,
+                        size: 14,
+                        color: Colors.amber,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        '${product.rating}',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'Stock: ${product.availableStock.toInt()} ${product.unit}',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
                   // Price & Quick Add Button
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '₹${product.pricePerUnit.toStringAsFixed(0)}/${product.unit}',
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primaryGreen),
+                      Expanded(
+                        child: Text(
+                          '₹${product.pricePerUnit.toStringAsFixed(0)}/${product.unit}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 17,
+                            color: AppColors.primaryGreen,
+                          ),
+                        ),
                       ),
+                      const SizedBox(width: 4),
                       InkWell(
                         onTap: () {
-                          ref.read(cartProvider.notifier).addToCart(product, 1);
+                          ref
+                              .read(cartProvider.notifier)
+                              .addToCart(product, 1);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Added "${product.name}" to cart!'),
+                              content: Text(
+                                'Added "${product.name}" to cart!',
+                              ),
                               backgroundColor: AppColors.primaryGreen,
                               duration: const Duration(seconds: 1),
                             ),
                           );
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primaryGreen,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             '+ Add',
-                            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ),

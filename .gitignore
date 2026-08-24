@@ -43,3 +43,23 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase / local deployment files & secrets
+.firebase/
+firebase-debug.log
+firebase-debug.*
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+backend/appsettings.Development.json
+backend/appsettings.Local.json
+backend/appsettings*.json
+backend/*.json
+backend/**/*.json
+!backend/Properties/launchSettings.json
+*.serviceaccount.json
+*firebase-adminsdk*.json
+*.pem
+*.key
+*.p12
+.env
+.env.*

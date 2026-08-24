@@ -1,0 +1,45 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/trace/**",
+        "destination": "/index.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "krishi-mitra-38a5f",
+          "configurations": {
+            "android": "1:417496358910:android:151026cffb6e6b9f09aaaf",
+            "ios": "1:417496358910:ios:d5f9bf52b55ab5b009aaaf",
+            "web": "1:417496358910:web:40cfe4b64e47bf0509aaaf",
+            "windows": "1:417496358910:web:0255b972a592e14a09aaaf"
+          }
+        }
+      },
+      "android": {
+        "default": {
+          "projectId": "krishi-mitra-38a5f",
+          "appId": "1:417496358910:android:151026cffb6e6b9f09aaaf",
+          "fileOutput": "android/app/google-services.json"
+        }
+      }
+    }
+  }
+}

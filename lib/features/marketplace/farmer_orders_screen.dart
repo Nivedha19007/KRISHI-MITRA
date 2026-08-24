@@ -6,6 +6,8 @@ import '../../data/models/order_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/order_repository.dart';
 
+import '../../core/widgets/responsive_center.dart';
+
 class FarmerOrdersScreen extends ConsumerStatefulWidget {
   const FarmerOrdersScreen({super.key});
 
@@ -19,12 +21,17 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(currentUserProvider);
-    final orders = ref.watch(ordersProvider({'uid': currentUser.uid, 'isFarmer': true}));
+    final ordersAsync = ref.watch(farmerOrdersStreamProvider(currentUser.uid));
+    final orders = ordersAsync.value ?? [];
 
     final filteredOrders = orders.where((o) {
+      final status = o.orderStatus.toLowerCase();
       if (_selectedFilter == 'All') return true;
-      if (_selectedFilter == 'Pending') return o.orderStatus != 'Delivered';
-      if (_selectedFilter == 'Delivered') return o.orderStatus == 'Delivered';
+      if (_selectedFilter == 'Pending') return status == 'pending' || status == 'placed';
+      if (_selectedFilter == 'Confirmed') return status == 'confirmed';
+      if (_selectedFilter == 'Packed') return status == 'packed';
+      if (_selectedFilter == 'Dispatched') return status.contains('dispatch') || status == 'shipped';
+      if (_selectedFilter == 'Delivered') return status == 'delivered';
       return true;
     }).toList();
 
@@ -37,61 +44,100 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
         backgroundColor: AppColors.primaryGreen,
         foregroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => setState(() {}),
-          ),
-        ],
       ),
-      body: Column(
-        children: [
-          // Filter Tabs
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              children: [
-                _buildFilterChip('All', 'All Orders (${orders.length})'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Pending', 'Active Dispatch'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Delivered', 'Completed'),
-              ],
+      body: ResponsiveCenter(
+        maxWidth: 1200,
+        child: Column(
+          children: [
+            // Filter Tabs
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildFilterChip('All', 'All (${orders.length})'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Pending', 'Pending'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Confirmed', 'Confirmed'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Packed', 'Packed'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Dispatched', 'Dispatched'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Delivered', 'Delivered'),
+                  ],
+                ),
+              ),
             ),
-          ),
-          const Divider(height: 1),
+            const Divider(height: 1),
 
-          Expanded(
-            child: filteredOrders.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.inbox_outlined, size: 70, color: Colors.grey.shade400),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No orders found',
-                          style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'New customer orders for your crops will appear here.',
-                          style: GoogleFonts.inter(fontSize: 13, color: AppColors.textMuted),
-                        ),
-                      ],
+            Expanded(
+              child: filteredOrders.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inbox_outlined,
+                            size: 70,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No orders found',
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'New customer orders for your crops will appear here.',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isDesktop = constraints.maxWidth >= 800;
+                        if (isDesktop) {
+                          return GridView.builder(
+                            padding: const EdgeInsets.all(16),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              childAspectRatio: 1.35,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                            ),
+                            itemCount: filteredOrders.length,
+                            itemBuilder: (context, index) {
+                              return _buildOrderCard(
+                                  context, filteredOrders[index]);
+                            },
+                          );
+                        }
+                        return ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filteredOrders.length,
+                          itemBuilder: (context, index) {
+                            return _buildOrderCard(
+                                context, filteredOrders[index]);
+                          },
+                        );
+                      },
                     ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredOrders.length,
-                    itemBuilder: (context, index) {
-                      final order = filteredOrders[index];
-                      return _buildOrderCard(context, order);
-                    },
-                  ),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -106,7 +152,7 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
       labelStyle: TextStyle(
         color: isSelected ? Colors.white : AppColors.primaryGreen,
         fontWeight: FontWeight.bold,
-        fontSize: 12,
+        fontSize: 14,
       ),
       backgroundColor: AppColors.mintBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -117,8 +163,8 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
     final statusColor = order.orderStatus == 'Delivered'
         ? AppColors.verifiedGreen
         : order.orderStatus.contains('Dispatched')
-            ? AppColors.primaryGreen
-            : AppColors.pendingAmber;
+        ? AppColors.primaryGreen
+        : AppColors.pendingAmber;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -135,18 +181,31 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
               children: [
                 Text(
                   'Order #${order.id}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textPrimary),
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
+                    color: statusColor.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: statusColor.withOpacity(0.4)),
+                    border: Border.all(
+                      color: statusColor.withValues(alpha: 0.4),
+                    ),
                   ),
                   child: Text(
                     order.orderStatus,
-                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: statusColor),
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: statusColor,
+                    ),
                   ),
                 ),
               ],
@@ -164,7 +223,11 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
                     color: AppColors.mintBg,
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.eco, color: AppColors.primaryGreen, size: 28),
+                  child: const Icon(
+                    Icons.eco,
+                    color: AppColors.primaryGreen,
+                    size: 28,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -173,18 +236,28 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
                     children: [
                       Text(
                         order.productName,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
                       ),
                       Text(
                         'Variety: ${order.variety} • Qty: ${order.quantity} ${order.unit}',
-                        style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 Text(
                   '₹${order.totalAmount.toStringAsFixed(0)}',
-                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primaryGreen),
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22,
+                    color: AppColors.primaryGreen,
+                  ),
                 ),
               ],
             ),
@@ -203,23 +276,17 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.person_outline, size: 16, color: AppColors.textSecondary),
+                      const Icon(
+                        Icons.person_outline,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'Buyer: ${order.customerName}',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_outlined, size: 16, color: AppColors.textSecondary),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          order.deliveryAddress,
-                          style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
                         ),
                       ),
                     ],
@@ -227,11 +294,39 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.qr_code, size: 16, color: AppColors.primaryGreen),
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 18,
+                        color: AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          order.deliveryAddress,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.qr_code,
+                        size: 18,
+                        color: AppColors.primaryGreen,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'QR Batch ID: ${order.batchId}',
-                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primaryGreen),
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryGreen,
+                        ),
                       ),
                     ],
                   ),
@@ -257,15 +352,24 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
                         const SizedBox(width: 4),
                         Text(
                           'Buyer Rating: ${order.rating}/5.0',
-                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.amber.shade900),
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: Colors.amber.shade900,
+                          ),
                         ),
                       ],
                     ),
-                    if (order.reviewText != null && order.reviewText!.isNotEmpty) ...[
+                    if (order.reviewText != null &&
+                        order.reviewText!.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         '"${order.reviewText}"',
-                        style: GoogleFonts.inter(fontSize: 12, fontStyle: FontStyle.italic, color: AppColors.textPrimary),
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ],
                   ],
@@ -285,7 +389,8 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                if (order.orderStatus != 'Dispatched 🚚' && order.orderStatus != 'Delivered')
+                if (order.orderStatus != 'Dispatched' &&
+                    order.orderStatus != 'Delivered')
                   Expanded(
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.local_shipping, size: 18),
@@ -294,12 +399,13 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
                         backgroundColor: AppColors.primaryGreen,
                       ),
                       onPressed: () {
-                        ref.read(ordersProvider({'uid': order.farmerId, 'isFarmer': true}).notifier).updateStatus(
-                              order.id,
-                              'Dispatched 🚚',
-                            );
+                        ref
+                            .read(orderRepositoryProvider)
+                            .updateOrderStatus(order.id, 'Dispatched');
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Order marked as Dispatched!')),
+                          const SnackBar(
+                            content: Text('Order marked as Dispatched!'),
+                          ),
                         );
                       },
                     ),
@@ -315,7 +421,9 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
   void _showStatusUpdateDialog(BuildContext context, OrderModel order) {
     showModalBottomSheet(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         return Padding(
           padding: const EdgeInsets.all(20),
@@ -325,38 +433,61 @@ class _FarmerOrdersScreenState extends ConsumerState<FarmerOrdersScreen> {
             children: [
               Text(
                 'Update Order Status',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18),
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
               const SizedBox(height: 16),
               ListTile(
-                leading: const Icon(Icons.check_circle_outline, color: AppColors.primaryGreen),
+                leading: const Icon(
+                  Icons.check_circle_outline,
+                  color: AppColors.primaryGreen,
+                ),
                 title: const Text('Confirmed'),
                 onTap: () {
-                  ref.read(ordersProvider({'uid': order.farmerId, 'isFarmer': true}).notifier).updateStatus(order.id, 'Confirmed');
+                  ref
+                      .read(orderRepositoryProvider)
+                      .updateOrderStatus(order.id, 'Confirmed');
                   Navigator.pop(context);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.inventory_2_outlined, color: AppColors.primaryGreen),
+                leading: const Icon(
+                  Icons.inventory_2_outlined,
+                  color: AppColors.primaryGreen,
+                ),
                 title: const Text('Packed'),
                 onTap: () {
-                  ref.read(ordersProvider({'uid': order.farmerId, 'isFarmer': true}).notifier).updateStatus(order.id, 'Packed');
+                  ref
+                      .read(orderRepositoryProvider)
+                      .updateOrderStatus(order.id, 'Packed');
                   Navigator.pop(context);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.local_shipping_outlined, color: AppColors.primaryGreen),
-                title: const Text('Dispatched 🚚'),
+                leading: const Icon(
+                  Icons.local_shipping_outlined,
+                  color: AppColors.primaryGreen,
+                ),
+                title: const Text('Dispatched'),
                 onTap: () {
-                  ref.read(ordersProvider({'uid': order.farmerId, 'isFarmer': true}).notifier).updateStatus(order.id, 'Dispatched 🚚');
+                  ref
+                      .read(orderRepositoryProvider)
+                      .updateOrderStatus(order.id, 'Dispatched');
                   Navigator.pop(context);
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.home_outlined, color: AppColors.verifiedGreen),
+                leading: const Icon(
+                  Icons.home_outlined,
+                  color: AppColors.verifiedGreen,
+                ),
                 title: const Text('Delivered'),
                 onTap: () {
-                  ref.read(ordersProvider({'uid': order.farmerId, 'isFarmer': true}).notifier).updateStatus(order.id, 'Delivered');
+                  ref
+                      .read(orderRepositoryProvider)
+                      .updateOrderStatus(order.id, 'Delivered');
                   Navigator.pop(context);
                 },
               ),

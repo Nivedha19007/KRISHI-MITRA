@@ -33,7 +33,9 @@ class CommentModel {
       farmerName: map['farmerName'] ?? '',
       farmerAvatar: map['farmerAvatar'] ?? '',
       content: map['content'] ?? '',
-      createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt']) : DateTime.now(),
+      createdAt: map['createdAt'] != null
+          ? DateTime.parse(map['createdAt'])
+          : DateTime.now(),
     );
   }
 }
@@ -44,7 +46,8 @@ class PostModel {
   final String farmerName;
   final String farmerState;
   final String farmerDistrict;
-  final String category; // Crop Problem, Pest/Disease, Seeds, Machinery, Excess Stock, Buying Request, Selling Request, General Advice
+  final String
+  category; // Crop Problem, Pest/Disease, Seeds, Machinery, Excess Stock, Buying Request, Selling Request, General Advice
   final String content;
   final String? imageUrl;
   final int likesCount;
@@ -96,11 +99,19 @@ class PostModel {
       imageUrl: map['imageUrl'],
       likesCount: map['likesCount'] ?? 0,
       likedByUids: List<String>.from(map['likedByUids'] ?? []),
-      comments: (map['comments'] as List<dynamic>?)
-              ?.map((e) => CommentModel.fromMap(Map<String, dynamic>.from(e), e['id'] ?? ''))
+      comments:
+          (map['comments'] as List<dynamic>?)
+              ?.map(
+                (e) => CommentModel.fromMap(
+                  Map<String, dynamic>.from(e),
+                  e['id'] ?? '',
+                ),
+              )
               .toList() ??
           [],
-      createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt']) : DateTime.now(),
+      createdAt: map['createdAt'] != null
+          ? DateTime.parse(map['createdAt'])
+          : DateTime.now(),
     );
   }
 }

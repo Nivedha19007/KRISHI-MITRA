@@ -45,7 +45,8 @@ class PricePredictionService {
 
     // Variety-specific multiplier heuristics for prototype demonstration
     double multiplier = 1.15; // default upward multiplier
-    if (variety.toLowerCase().contains('country') || variety.toLowerCase().contains('desi')) {
+    if (variety.toLowerCase().contains('country') ||
+        variety.toLowerCase().contains('desi')) {
       multiplier = 1.22;
     } else if (variety.toLowerCase().contains('hybrid')) {
       multiplier = 1.10;

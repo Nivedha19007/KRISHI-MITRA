@@ -5,7 +5,6 @@ import '../models/mandi_price_model.dart';
 import '../models/post_model.dart';
 import '../models/batch_model.dart';
 import '../models/scheme_model.dart';
-import '../../core/constants/india_locations.dart';
 
 class SampleData {
   static final List<UserModel> sampleUsers = [
@@ -88,7 +87,8 @@ class SampleData {
       name: 'Country Tomato',
       category: 'Vegetables',
       variety: 'Country Red',
-      description: 'Freshly harvested organic country tomatoes grown naturally with zero synthetic pesticides. Juicy and rich in lycopene.',
+      description:
+          'Freshly harvested organic country tomatoes grown naturally with zero synthetic pesticides. Juicy and rich in lycopene.',
       quantity: 500,
       availableStock: 100,
       unit: 'kg',
@@ -105,12 +105,15 @@ class SampleData {
       qualityChecked: true,
       packed: true,
       dispatched: false,
-      imageUrls: ['https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600'],
+      imageUrls: [
+        'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600',
+      ],
       harvestDate: DateTime.now().subtract(const Duration(days: 2)),
       expectedDeliveryDate: DateTime.now().add(const Duration(days: 1)),
       certificationStatus: VerificationStatus.verified,
       certificateName: 'Organic India #ORG-8821 (Verified)',
-      certificateUrl: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400',
+      certificateUrl:
+          'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400',
       batchId: 'TOM-ERD-101',
       rating: 4.9,
       reviewCount: 38,
@@ -125,7 +128,8 @@ class SampleData {
       name: 'Country Tomato',
       category: 'Vegetables',
       variety: 'Hybrid Red',
-      description: 'Firm, freshly picked hybrid tomatoes with extended shelf life. Ideal for salads and cooking.',
+      description:
+          'Firm, freshly picked hybrid tomatoes with extended shelf life. Ideal for salads and cooking.',
       quantity: 200,
       availableStock: 50,
       unit: 'kg',
@@ -142,7 +146,9 @@ class SampleData {
       qualityChecked: true,
       packed: true,
       dispatched: false,
-      imageUrls: ['https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600'],
+      imageUrls: [
+        'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600',
+      ],
       harvestDate: DateTime.now().subtract(const Duration(days: 1)),
       expectedDeliveryDate: DateTime.now().add(const Duration(days: 1)),
       certificationStatus: VerificationStatus.verified,
@@ -161,7 +167,8 @@ class SampleData {
       name: 'Country Tomato',
       category: 'Vegetables',
       variety: 'Desi Country',
-      description: 'Traditional sour country tomatoes grown in natural red soil beds.',
+      description:
+          'Traditional sour country tomatoes grown in natural red soil beds.',
       quantity: 300,
       availableStock: 75,
       unit: 'kg',
@@ -178,7 +185,9 @@ class SampleData {
       qualityChecked: true,
       packed: true,
       dispatched: false,
-      imageUrls: ['https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600'],
+      imageUrls: [
+        'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600',
+      ],
       harvestDate: DateTime.now().subtract(const Duration(days: 3)),
       expectedDeliveryDate: DateTime.now().add(const Duration(days: 2)),
       certificationStatus: VerificationStatus.verified,
@@ -197,7 +206,8 @@ class SampleData {
       name: 'Sona Masoori Rice',
       category: 'Grains',
       variety: 'Sona Masoori Premium',
-      description: 'Aromatic traditional polished Sona Masoori rice harvested from organic wetlands with low glycemic index.',
+      description:
+          'Aromatic traditional polished Sona Masoori rice harvested from organic wetlands with low glycemic index.',
       quantity: 1000,
       availableStock: 850,
       unit: 'kg',
@@ -214,7 +224,9 @@ class SampleData {
       qualityChecked: true,
       packed: true,
       dispatched: true,
-      imageUrls: ['https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600'],
+      imageUrls: [
+        'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600',
+      ],
       harvestDate: DateTime.now().subtract(const Duration(days: 10)),
       expectedDeliveryDate: DateTime.now().add(const Duration(days: 3)),
       certificationStatus: VerificationStatus.verified,
@@ -233,7 +245,8 @@ class SampleData {
       name: 'Nashik Red Onion',
       category: 'Vegetables',
       variety: 'Nashik Red Grade A',
-      description: 'Pungent, firm, high-shelf-life red onions stored in ventilated traditional kanda chawl.',
+      description:
+          'Pungent, firm, high-shelf-life red onions stored in ventilated traditional kanda chawl.',
       quantity: 1200,
       availableStock: 950,
       unit: 'kg',
@@ -250,7 +263,9 @@ class SampleData {
       qualityChecked: true,
       packed: true,
       dispatched: true,
-      imageUrls: ['https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=600'],
+      imageUrls: [
+        'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=600',
+      ],
       harvestDate: DateTime.now().subtract(const Duration(days: 5)),
       expectedDeliveryDate: DateTime.now().add(const Duration(days: 3)),
       certificationStatus: VerificationStatus.verified,
@@ -269,7 +284,8 @@ class SampleData {
       name: 'Alphonso Mango',
       category: 'Fruits',
       variety: 'Alphonso (Hapus)',
-      description: 'Naturally tree-ripened sweet Alphonso mangoes with golden skin and rich tropical aroma.',
+      description:
+          'Naturally tree-ripened sweet Alphonso mangoes with golden skin and rich tropical aroma.',
       quantity: 300,
       availableStock: 210,
       unit: 'kg',
@@ -286,7 +302,9 @@ class SampleData {
       qualityChecked: true,
       packed: true,
       dispatched: false,
-      imageUrls: ['https://images.unsplash.com/photo-1553279768-865429fa0078?w=600'],
+      imageUrls: [
+        'https://images.unsplash.com/photo-1553279768-865429fa0078?w=600',
+      ],
       harvestDate: DateTime.now().subtract(const Duration(days: 2)),
       expectedDeliveryDate: DateTime.now().add(const Duration(days: 2)),
       certificationStatus: VerificationStatus.verified,
@@ -294,6 +312,162 @@ class SampleData {
       batchId: 'MNG-NSK-009',
       rating: 5.0,
       reviewCount: 64,
+    ),
+
+    // Kerala: Wayanad Black Pepper
+    ProductModel(
+      id: 'prod_5',
+      farmerId: 'farmer_karthik',
+      farmerName: 'Karthik Raja',
+      farmerMobile: '+91 98765 11223',
+      name: 'Wayanad Black Pepper',
+      category: 'Spices',
+      variety: 'Malabar Premium Black',
+      description:
+          'Aromatic, bold organic black pepper harvested from high-altitude slopes of Wayanad, Kerala.',
+      quantity: 400,
+      availableStock: 250,
+      unit: 'kg',
+      pricePerUnit: 280.0,
+      state: 'Kerala',
+      district: 'Wayanad',
+      village: 'Kalpetta',
+      location: 'Kalpetta Spice Garden, Wayanad',
+      latitude: 11.6050,
+      longitude: 76.0830,
+      farmingType: 'Organic',
+      isOrganic: true,
+      isVerifiedFarmer: true,
+      qualityChecked: true,
+      packed: true,
+      dispatched: true,
+      imageUrls: [
+        'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600',
+      ],
+      harvestDate: DateTime.now().subtract(const Duration(days: 4)),
+      expectedDeliveryDate: DateTime.now().add(const Duration(days: 2)),
+      certificationStatus: VerificationStatus.verified,
+      certificateName: 'Spices Board India #SPI-KER-102',
+      batchId: 'PEP-WYD-301',
+      rating: 4.9,
+      reviewCount: 45,
+    ),
+
+    // Karnataka: Kolar Tomato
+    ProductModel(
+      id: 'prod_6',
+      farmerId: 'farmer_arun',
+      farmerName: 'Arun Kumar',
+      farmerMobile: '+91 98765 43210',
+      name: 'Kolar Red Tomato',
+      category: 'Vegetables',
+      variety: 'Kolar Pink Hybrid',
+      description:
+          'Juicy, firm tomatoes cultivated in red soil of Kolar district, Karnataka.',
+      quantity: 600,
+      availableStock: 300,
+      unit: 'kg',
+      pricePerUnit: 38.0,
+      state: 'Karnataka',
+      district: 'Kolar',
+      village: 'Srinivaspur',
+      location: 'Srinivaspur APMC Plot, Kolar',
+      latitude: 13.1367,
+      longitude: 78.1292,
+      farmingType: 'Organic',
+      isOrganic: true,
+      isVerifiedFarmer: true,
+      qualityChecked: true,
+      packed: true,
+      dispatched: false,
+      imageUrls: [
+        'https://images.unsplash.com/photo-1518977676601-b53f82aba655?w=600',
+      ],
+      harvestDate: DateTime.now().subtract(const Duration(days: 1)),
+      expectedDeliveryDate: DateTime.now().add(const Duration(days: 1)),
+      certificationStatus: VerificationStatus.verified,
+      certificateName: 'Karnataka Organic Board #KOB-KLR-88',
+      batchId: 'TOM-KLR-202',
+      rating: 4.8,
+      reviewCount: 31,
+    ),
+
+    // Andhra Pradesh: Guntur Red Chilli
+    ProductModel(
+      id: 'prod_7',
+      farmerId: 'farmer_venkatesh',
+      farmerName: 'Venkatesh M.',
+      farmerMobile: '+91 98765 99887',
+      name: 'Guntur Red Chilli',
+      category: 'Spices',
+      variety: 'Guntur Teja S17',
+      description:
+          'Fiery red dried chillies direct from Asia’s largest chilli market in Guntur, Andhra Pradesh.',
+      quantity: 800,
+      availableStock: 500,
+      unit: 'kg',
+      pricePerUnit: 180.0,
+      state: 'Andhra Pradesh',
+      district: 'Guntur',
+      village: 'Tenali',
+      location: 'Tenali Farm Fields, Guntur',
+      latitude: 16.2430,
+      longitude: 80.6400,
+      farmingType: 'Organic',
+      isOrganic: true,
+      isVerifiedFarmer: true,
+      qualityChecked: true,
+      packed: true,
+      dispatched: true,
+      imageUrls: [
+        'https://images.unsplash.com/photo-1588252303782-cb80119abd6d?w=600',
+      ],
+      harvestDate: DateTime.now().subtract(const Duration(days: 6)),
+      expectedDeliveryDate: DateTime.now().add(const Duration(days: 3)),
+      certificationStatus: VerificationStatus.verified,
+      certificateName: 'AP Spices Quality #AP-GNT-404',
+      batchId: 'CHL-GNT-505',
+      rating: 4.9,
+      reviewCount: 58,
+    ),
+
+    // Telangana: Telangana Sona Rice
+    ProductModel(
+      id: 'prod_8',
+      farmerId: 'farmer_arun',
+      farmerName: 'Arun Kumar',
+      farmerMobile: '+91 98765 43210',
+      name: 'Telangana Sona Rice',
+      category: 'Grains',
+      variety: 'RNR 15048 Super Fine',
+      description:
+          'Low GI super-fine grain rice developed by Professor Jayashankar Telangana State Agricultural University.',
+      quantity: 1500,
+      availableStock: 1100,
+      unit: 'kg',
+      pricePerUnit: 58.0,
+      state: 'Telangana',
+      district: 'Warangal',
+      village: 'Narsampet',
+      location: 'Narsampet Agricultural Zone, Warangal',
+      latitude: 17.9689,
+      longitude: 79.5941,
+      farmingType: 'Organic',
+      isOrganic: true,
+      isVerifiedFarmer: true,
+      qualityChecked: true,
+      packed: true,
+      dispatched: true,
+      imageUrls: [
+        'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600',
+      ],
+      harvestDate: DateTime.now().subtract(const Duration(days: 8)),
+      expectedDeliveryDate: DateTime.now().add(const Duration(days: 3)),
+      certificationStatus: VerificationStatus.verified,
+      certificateName: 'Telangana State Seed Cert #TS-WGL-901',
+      batchId: 'RIC-TS-707',
+      rating: 4.8,
+      reviewCount: 42,
     ),
   ];
 
@@ -306,41 +480,194 @@ class SampleData {
     DateTime? harvestDate,
   }) {
     final lower = cropName.toLowerCase();
-    final hDate = harvestDate ?? DateTime.now().subtract(const Duration(days: 2));
+    final hDate =
+        harvestDate ?? DateTime.now().subtract(const Duration(days: 2));
 
-    if (lower.contains('rice') || lower.contains('paddy') || lower.contains('grain')) {
+    if (lower.contains('rice') ||
+        lower.contains('paddy') ||
+        lower.contains('grain')) {
       return [
-        TimelineMilestone(stage: TimelineStage.cultivated, title: 'Seed Sown 🌱', description: 'Selected high-yield organic paddy seeds sown in nursery bed.', timestamp: hDate.subtract(const Duration(days: 120)), location: location),
-        TimelineMilestone(stage: TimelineStage.cultivated, title: 'Growing Stage 🌿', description: 'Transplanted and irrigated using sustainable water management.', timestamp: hDate.subtract(const Duration(days: 60)), location: location),
-        TimelineMilestone(stage: TimelineStage.cultivated, title: 'Flowering 🌾', description: 'Golden grain head panicles developed fully.', timestamp: hDate.subtract(const Duration(days: 25)), location: location),
-        TimelineMilestone(stage: TimelineStage.harvested, title: 'Harvested 🧺', description: 'Reaped cleanly by farmer $farmerName.', timestamp: hDate, location: location),
-        TimelineMilestone(stage: TimelineStage.qualityVerified, title: 'Quality Checked 🧪', description: 'Sun-dried to 12% moisture & lab quality tested.', timestamp: hDate.add(const Duration(hours: 12)), location: '$location Quality Hub'),
-        TimelineMilestone(stage: TimelineStage.packed, title: 'Packed 📦', description: 'Sealed in eco-friendly jute bags with QR serial $batchId.', timestamp: hDate.add(const Duration(hours: 24)), location: '$location Warehouse'),
-        TimelineMilestone(stage: TimelineStage.dispatched, title: 'Dispatched 🚚', description: 'Handed over to Krishi Express Freight.', timestamp: hDate.add(const Duration(hours: 36)), location: 'State Transit Center'),
-        TimelineMilestone(stage: TimelineStage.delivered, title: 'Delivered 🏠', description: 'Final doorstep delivery to customer.', timestamp: hDate.add(const Duration(hours: 48)), isCompleted: false, location: 'Customer Address'),
+        TimelineMilestone(
+          stage: TimelineStage.cultivated,
+          title: 'Seed Sown 🌱',
+          description:
+              'Selected high-yield organic paddy seeds sown in nursery bed.',
+          timestamp: hDate.subtract(const Duration(days: 120)),
+          location: location,
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.cultivated,
+          title: 'Growing Stage 🌿',
+          description:
+              'Transplanted and irrigated using sustainable water management.',
+          timestamp: hDate.subtract(const Duration(days: 60)),
+          location: location,
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.cultivated,
+          title: 'Flowering 🌾',
+          description: 'Golden grain head panicles developed fully.',
+          timestamp: hDate.subtract(const Duration(days: 25)),
+          location: location,
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.harvested,
+          title: 'Harvested 🧺',
+          description: 'Reaped cleanly by farmer $farmerName.',
+          timestamp: hDate,
+          location: location,
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.qualityVerified,
+          title: 'Quality Checked 🧪',
+          description: 'Sun-dried to 12% moisture & lab quality tested.',
+          timestamp: hDate.add(const Duration(hours: 12)),
+          location: '$location Quality Hub',
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.packed,
+          title: 'Packed 📦',
+          description:
+              'Sealed in eco-friendly jute bags with QR serial $batchId.',
+          timestamp: hDate.add(const Duration(hours: 24)),
+          location: '$location Warehouse',
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.dispatched,
+          title: 'Dispatched 🚚',
+          description: 'Handed over to Krishi Express Freight.',
+          timestamp: hDate.add(const Duration(hours: 36)),
+          location: 'State Transit Center',
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.delivered,
+          title: 'Delivered 🏠',
+          description: 'Final doorstep delivery to customer.',
+          timestamp: hDate.add(const Duration(hours: 48)),
+          isCompleted: false,
+          location: 'Customer Address',
+        ),
       ];
     } else if (lower.contains('onion')) {
       return [
-        TimelineMilestone(stage: TimelineStage.cultivated, title: 'Seed Sown 🌱', description: 'High-pungency organic onion seeds sown.', timestamp: hDate.subtract(const Duration(days: 110)), location: location),
-        TimelineMilestone(stage: TimelineStage.cultivated, title: 'Growing Stage 🌿', description: 'Drip fertigation with bio-compost.', timestamp: hDate.subtract(const Duration(days: 45)), location: location),
-        TimelineMilestone(stage: TimelineStage.cultivated, title: 'Flowering / Bulb Phase 🧅', description: 'Sub-surface bulb enlargement.', timestamp: hDate.subtract(const Duration(days: 20)), location: location),
-        TimelineMilestone(stage: TimelineStage.harvested, title: 'Harvested 🧺', description: 'Pulled and neck-cured under shaded rows.', timestamp: hDate, location: location),
-        TimelineMilestone(stage: TimelineStage.qualityVerified, title: 'Quality Checked 🧪', description: 'Graded to 55mm+ size standard by $farmerName.', timestamp: hDate.add(const Duration(hours: 8)), location: '$location Grading Yard'),
-        TimelineMilestone(stage: TimelineStage.packed, title: 'Packed 📦', description: 'Ventilated red mesh bag packing done.', timestamp: hDate.add(const Duration(hours: 18)), location: '$location Kanda Chawl'),
-        TimelineMilestone(stage: TimelineStage.dispatched, title: 'Dispatched 🚚', description: 'Loaded into temperature-controlled van.', timestamp: hDate.add(const Duration(hours: 30)), location: 'Logistics Depot'),
-        TimelineMilestone(stage: TimelineStage.delivered, title: 'Delivered 🏠', description: 'Delivered to customer doorstep.', timestamp: hDate.add(const Duration(hours: 42)), isCompleted: false, location: 'Customer Address'),
+        TimelineMilestone(
+          stage: TimelineStage.cultivated,
+          title: 'Seed Sown 🌱',
+          description: 'High-pungency organic onion seeds sown.',
+          timestamp: hDate.subtract(const Duration(days: 110)),
+          location: location,
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.cultivated,
+          title: 'Growing Stage 🌿',
+          description: 'Drip fertigation with bio-compost.',
+          timestamp: hDate.subtract(const Duration(days: 45)),
+          location: location,
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.cultivated,
+          title: 'Flowering / Bulb Phase 🧅',
+          description: 'Sub-surface bulb enlargement.',
+          timestamp: hDate.subtract(const Duration(days: 20)),
+          location: location,
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.harvested,
+          title: 'Harvested 🧺',
+          description: 'Pulled and neck-cured under shaded rows.',
+          timestamp: hDate,
+          location: location,
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.qualityVerified,
+          title: 'Quality Checked 🧪',
+          description: 'Graded to 55mm+ size standard by $farmerName.',
+          timestamp: hDate.add(const Duration(hours: 8)),
+          location: '$location Grading Yard',
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.packed,
+          title: 'Packed 📦',
+          description: 'Ventilated red mesh bag packing done.',
+          timestamp: hDate.add(const Duration(hours: 18)),
+          location: '$location Kanda Chawl',
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.dispatched,
+          title: 'Dispatched 🚚',
+          description: 'Loaded into temperature-controlled van.',
+          timestamp: hDate.add(const Duration(hours: 30)),
+          location: 'Logistics Depot',
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.delivered,
+          title: 'Delivered 🏠',
+          description: 'Delivered to customer doorstep.',
+          timestamp: hDate.add(const Duration(hours: 42)),
+          isCompleted: false,
+          location: 'Customer Address',
+        ),
       ];
     } else {
       // Vegetable / Tomato timeline
       return [
-        TimelineMilestone(stage: TimelineStage.cultivated, title: 'Seed Sown 🌱', description: 'Non-GMO certified heirloom seeds sown.', timestamp: hDate.subtract(const Duration(days: 75)), location: location),
-        TimelineMilestone(stage: TimelineStage.cultivated, title: 'Growing Stage 🌿', description: 'Nurtured with neem bio-spray pest protection.', timestamp: hDate.subtract(const Duration(days: 35)), location: location),
-        TimelineMilestone(stage: TimelineStage.cultivated, title: 'Flowering 🌸', description: 'Optimal yellow flower blooming phase.', timestamp: hDate.subtract(const Duration(days: 15)), location: location),
-        TimelineMilestone(stage: TimelineStage.harvested, title: 'Harvested 🧺', description: 'Hand-picked at peak red ripeness by $farmerName.', timestamp: hDate, location: location),
-        TimelineMilestone(stage: TimelineStage.qualityVerified, title: 'Quality Checked 🧪', description: 'Passed zero chemical residue test.', timestamp: hDate.add(const Duration(hours: 6)), location: '$location Agritech Hub'),
-        TimelineMilestone(stage: TimelineStage.packed, title: 'Packed 📦', description: 'Safely packed in cushioned ventilated boxes.', timestamp: hDate.add(const Duration(hours: 14)), location: '$location Packhouse'),
-        TimelineMilestone(stage: TimelineStage.dispatched, title: 'Dispatched 🚚', description: 'Dispatched via Krishi Direct Express.', timestamp: hDate.add(const Duration(hours: 22)), location: 'Regional Transit Hub'),
-        TimelineMilestone(stage: TimelineStage.delivered, title: 'Delivered 🏠', description: 'Out for delivery to customer.', timestamp: hDate.add(const Duration(hours: 30)), isCompleted: false, location: 'Customer Doorstep'),
+        TimelineMilestone(
+          stage: TimelineStage.cultivated,
+          title: 'Seed Sown 🌱',
+          description: 'Non-GMO certified heirloom seeds sown.',
+          timestamp: hDate.subtract(const Duration(days: 75)),
+          location: location,
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.cultivated,
+          title: 'Growing Stage 🌿',
+          description: 'Nurtured with neem bio-spray pest protection.',
+          timestamp: hDate.subtract(const Duration(days: 35)),
+          location: location,
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.cultivated,
+          title: 'Flowering 🌸',
+          description: 'Optimal yellow flower blooming phase.',
+          timestamp: hDate.subtract(const Duration(days: 15)),
+          location: location,
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.harvested,
+          title: 'Harvested 🧺',
+          description: 'Hand-picked at peak red ripeness by $farmerName.',
+          timestamp: hDate,
+          location: location,
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.qualityVerified,
+          title: 'Quality Checked 🧪',
+          description: 'Passed zero chemical residue test.',
+          timestamp: hDate.add(const Duration(hours: 6)),
+          location: '$location Agritech Hub',
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.packed,
+          title: 'Packed 📦',
+          description: 'Safely packed in cushioned ventilated boxes.',
+          timestamp: hDate.add(const Duration(hours: 14)),
+          location: '$location Packhouse',
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.dispatched,
+          title: 'Dispatched 🚚',
+          description: 'Dispatched via Krishi Direct Express.',
+          timestamp: hDate.add(const Duration(hours: 22)),
+          location: 'Regional Transit Hub',
+        ),
+        TimelineMilestone(
+          stage: TimelineStage.delivered,
+          title: 'Delivered 🏠',
+          description: 'Out for delivery to customer.',
+          timestamp: hDate.add(const Duration(hours: 30)),
+          isCompleted: false,
+          location: 'Customer Doorstep',
+        ),
       ];
     }
   }
@@ -457,8 +784,10 @@ class SampleData {
       farmerState: 'Tamil Nadu',
       farmerDistrict: 'Coimbatore',
       category: 'Crop Problem',
-      content: 'My country tomato leaves are showing mild yellowing on bottom leaves. What organic neem/bio-spray spray works best for early blight?',
-      imageUrl: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500',
+      content:
+          'My country tomato leaves are showing mild yellowing on bottom leaves. What organic neem/bio-spray spray works best for early blight?',
+      imageUrl:
+          'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=500',
       likesCount: 24,
       comments: [
         CommentModel(
@@ -466,7 +795,8 @@ class SampleData {
           farmerId: 'farmer_meena',
           farmerName: 'Meena Patil',
           farmerAvatar: '',
-          content: 'Try spraying 5% Neem seed kernel extract (NSKE) with panchagavya twice a week. Works wonders!',
+          content:
+              'Try spraying 5% Neem seed kernel extract (NSKE) with panchagavya twice a week. Works wonders!',
           createdAt: DateTime.now().subtract(const Duration(hours: 2)),
         ),
       ],
@@ -478,19 +808,23 @@ class SampleData {
       id: 'scheme_1',
       title: 'PM-KISAN Samman Nidhi',
       category: 'Financial Grant',
-      description: 'Income support of ₹6,000 per year in three equal installments directly transferred to bank accounts of small & marginal farmer families.',
+      description:
+          'Income support of ₹6,000 per year in three equal installments directly transferred to bank accounts of small & marginal farmer families.',
       eligibility: 'All landholding farmer families with cultivable land.',
       benefits: '₹6,000 / year direct bank credit.',
-      applicationProcess: 'Register online at pmkisan.gov.in or via local CSC center.',
+      applicationProcess:
+          'Register online at pmkisan.gov.in or via local CSC center.',
       officialUrl: 'https://pmkisan.gov.in',
     ),
     SchemeModel(
       id: 'scheme_2',
       title: 'Pradhan Mantri Fasal Bima Yojana (PMFBY)',
       category: 'Crop Insurance',
-      description: 'Comprehensive risk coverage for crops against non-preventable natural risks from pre-sowing to post-harvest.',
+      description:
+          'Comprehensive risk coverage for crops against non-preventable natural risks from pre-sowing to post-harvest.',
       eligibility: 'All farmers growing notified crops in notified areas.',
-      benefits: 'Up to 90% crop loss claim payout with low premium (1.5% - 2%).',
+      benefits:
+          'Up to 90% crop loss claim payout with low premium (1.5% - 2%).',
       applicationProcess: 'Apply through bank branch, CSC, or PMFBY portal.',
       officialUrl: 'https://pmfby.gov.in',
     ),

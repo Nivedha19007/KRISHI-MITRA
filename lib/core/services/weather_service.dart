@@ -19,7 +19,10 @@ class WeatherData {
 }
 
 class WeatherService {
-  Future<WeatherData> getWeatherForLocation(String state, String district) async {
+  Future<WeatherData> getWeatherForLocation(
+    String state,
+    String district,
+  ) async {
     await Future.delayed(const Duration(milliseconds: 200));
 
     return WeatherData(

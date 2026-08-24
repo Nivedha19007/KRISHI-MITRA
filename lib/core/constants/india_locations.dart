@@ -39,37 +39,178 @@ class IndiaLocations {
   ];
 
   static const Map<String, List<String>> districtsByState = {
-    'Tamil Nadu': ['Coimbatore', 'Erode', 'Salem', 'Chennai', 'Madurai', 'Tiruppur', 'Dharmapuri', 'Thanjavur', 'Trichy', 'Tirunelveli'],
-    'Maharashtra': ['Nashik', 'Pune', 'Nagpur', 'Solapur', 'Kolhapur', 'Ahmednagar', 'Satara', 'Sangli', 'Jalgaon'],
-    'Karnataka': ['Bengaluru Rural', 'Mysore', 'Hassan', 'Belagavi', 'Kolar', 'Mandya', 'Davangere', 'Shimoga'],
-    'Andhra Pradesh': ['Guntur', 'Kurnool', 'Chittoor', 'Krishna', 'Anantapur', 'East Godavari', 'Visakhapatnam'],
-    'Punjab': ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala', 'Bhatinda', 'Ferozepur', 'Sangrur'],
-    'Uttar Pradesh': ['Agra', 'Varanasi', 'Kanpur', 'Mathura', 'Lucknow', 'Gorakhpur', 'Bareilly', 'Meerut'],
-    'Gujarat': ['Ahmedabad', 'Rajkot', 'Surat', 'Vadodara', 'Junagadh', 'Amreli', 'Mehsana'],
-    'Kerala': ['Wayanad', 'Idukki', 'Palakkad', 'Thrissur', 'Kottayam', 'Malappuram', 'Kollam'],
-    'Telangana': ['Warangal', 'Nizamabad', 'Khammam', 'Karimnagar', 'Mahbubnagar', 'Nalgonda'],
-    'West Bengal': ['Hooghly', 'Nadia', 'Burdwan', 'Murshidabad', 'Bankura', 'Malda'],
-    'Rajasthan': ['Jaipur', 'Jodhpur', 'Ganganagar', 'Kota', 'Alwar', 'Bikaner'],
+    'Tamil Nadu': [
+      'Coimbatore',
+      'Erode',
+      'Salem',
+      'Chennai',
+      'Madurai',
+      'Tiruppur',
+      'Dharmapuri',
+      'Thanjavur',
+      'Trichy',
+      'Tirunelveli',
+    ],
+    'Maharashtra': [
+      'Nashik',
+      'Pune',
+      'Nagpur',
+      'Solapur',
+      'Kolhapur',
+      'Ahmednagar',
+      'Satara',
+      'Sangli',
+      'Jalgaon',
+    ],
+    'Karnataka': [
+      'Bengaluru Rural',
+      'Mysore',
+      'Hassan',
+      'Belagavi',
+      'Kolar',
+      'Mandya',
+      'Davangere',
+      'Shimoga',
+    ],
+    'Andhra Pradesh': [
+      'Guntur',
+      'Kurnool',
+      'Chittoor',
+      'Krishna',
+      'Anantapur',
+      'East Godavari',
+      'Visakhapatnam',
+    ],
+    'Punjab': [
+      'Ludhiana',
+      'Amritsar',
+      'Jalandhar',
+      'Patiala',
+      'Bhatinda',
+      'Ferozepur',
+      'Sangrur',
+    ],
+    'Uttar Pradesh': [
+      'Agra',
+      'Varanasi',
+      'Kanpur',
+      'Mathura',
+      'Lucknow',
+      'Gorakhpur',
+      'Bareilly',
+      'Meerut',
+    ],
+    'Gujarat': [
+      'Ahmedabad',
+      'Rajkot',
+      'Surat',
+      'Vadodara',
+      'Junagadh',
+      'Amreli',
+      'Mehsana',
+    ],
+    'Kerala': [
+      'Wayanad',
+      'Idukki',
+      'Palakkad',
+      'Thrissur',
+      'Kottayam',
+      'Malappuram',
+      'Kollam',
+    ],
+    'Telangana': [
+      'Warangal',
+      'Nizamabad',
+      'Khammam',
+      'Karimnagar',
+      'Mahbubnagar',
+      'Nalgonda',
+    ],
+    'West Bengal': [
+      'Hooghly',
+      'Nadia',
+      'Burdwan',
+      'Murshidabad',
+      'Bankura',
+      'Malda',
+    ],
+    'Rajasthan': [
+      'Jaipur',
+      'Jodhpur',
+      'Ganganagar',
+      'Kota',
+      'Alwar',
+      'Bikaner',
+    ],
     'Haryana': ['Karnal', 'Kurukshetra', 'Hisar', 'Ambala', 'Sirsa', 'Sonipat'],
-    'Madhya Pradesh': ['Indore', 'Ujjain', 'Bhopal', 'Mandsaur', 'Neemuch', 'Jabalpur'],
-    'Bihar': ['Muzaffarpur', 'Patna', 'Nalanda', 'Bhagalpur', 'Samastipur', 'Gaya'],
+    'Madhya Pradesh': [
+      'Indore',
+      'Ujjain',
+      'Bhopal',
+      'Mandsaur',
+      'Neemuch',
+      'Jabalpur',
+    ],
+    'Bihar': [
+      'Muzaffarpur',
+      'Patna',
+      'Nalanda',
+      'Bhagalpur',
+      'Samastipur',
+      'Gaya',
+    ],
     'Odisha': ['Cuttack', 'Sambalpur', 'Balasore', 'Ganjam', 'Puri', 'Bargarh'],
     'Assam': ['Kamrup', 'Jorhat', 'Nagaon', 'Sonitpur', 'Cachar', 'Barpeta'],
     'Delhi': ['North Delhi', 'South Delhi', 'East Delhi', 'West Delhi'],
   };
 
   static const Map<String, List<String>> mandisByDistrict = {
-    'Coimbatore': ['Coimbatore Main APMC Mandi', 'Pollachi Uzhavar Sandhai', 'Mettupalayam Market', 'Kinathukadavu Mandi'],
-    'Erode': ['Gobichettipalayam Mandi', 'Erode Central APMC', 'Perundurai Turmeric Market', 'Sathyamangalam Market'],
+    'Coimbatore': [
+      'Coimbatore Main APMC Mandi',
+      'Pollachi Uzhavar Sandhai',
+      'Mettupalayam Market',
+      'Kinathukadavu Mandi',
+    ],
+    'Erode': [
+      'Gobichettipalayam Mandi',
+      'Erode Central APMC',
+      'Perundurai Turmeric Market',
+      'Sathyamangalam Market',
+    ],
     'Salem': ['Salem Uzhavar Sandhai', 'Attur APMC Market', 'Mecheri Mandi'],
     'Chennai': ['Koyambedu Wholesale Market', 'Madhavaram APMC'],
     'Madurai': ['Madurai Central Mattuthavani Mandi', 'Melur Uzhavar Sandhai'],
-    'Nashik': ['APMC Nashik Mandi', 'Panchavati APMC', 'Lasalgaon Onion Market', 'Pimpalgaon Baswant Market'],
-    'Pune': ['Gultekdi Pune APMC', 'Manchar Vegetable Market', 'Baramati Market'],
-    'Kolar': ['Kolar Tomato APMC Market', 'Malur APMC', 'Srinivaspur Mango Mandi'],
-    'Bengaluru Rural': ['Hosakote APMC', 'Doddaballapur Mandi', 'Devanahalli Market'],
-    'Guntur': ['Guntur Chilli Yard APMC', 'Tenali Produce Market', 'Narasaraopet Mandi'],
-    'Ludhiana': ['Gill Road Ludhiana APMC', 'Khanna Grain Market', 'Jagraon Market'],
+    'Nashik': [
+      'APMC Nashik Mandi',
+      'Panchavati APMC',
+      'Lasalgaon Onion Market',
+      'Pimpalgaon Baswant Market',
+    ],
+    'Pune': [
+      'Gultekdi Pune APMC',
+      'Manchar Vegetable Market',
+      'Baramati Market',
+    ],
+    'Kolar': [
+      'Kolar Tomato APMC Market',
+      'Malur APMC',
+      'Srinivaspur Mango Mandi',
+    ],
+    'Bengaluru Rural': [
+      'Hosakote APMC',
+      'Doddaballapur Mandi',
+      'Devanahalli Market',
+    ],
+    'Guntur': [
+      'Guntur Chilli Yard APMC',
+      'Tenali Produce Market',
+      'Narasaraopet Mandi',
+    ],
+    'Ludhiana': [
+      'Gill Road Ludhiana APMC',
+      'Khanna Grain Market',
+      'Jagraon Market',
+    ],
     'Agra': ['Agra Potato APMC Mandi', 'Khurja Market', 'Fatehabad Mandi'],
     'Wayanad': ['Kalpetta Spice Mandi', 'Mananthavady Farmers Market'],
     'Indore': ['Indore Malwa APMC', 'Sanwer Produce Yard'],
@@ -77,10 +218,12 @@ class IndiaLocations {
   };
 
   static List<String> getDistricts(String state) {
-    return districtsByState[state] ?? ['Central District', 'North District', 'South District'];
+    return districtsByState[state] ??
+        ['Central District', 'North District', 'South District'];
   }
 
   static List<String> getMandis(String district) {
-    return mandisByDistrict[district] ?? ['$district APMC Main Mandi', '$district Farmers Market'];
+    return mandisByDistrict[district] ??
+        ['$district APMC Main Mandi', '$district Farmers Market'];
   }
 }
