@@ -28,6 +28,7 @@ KrishiMitra is an agriculture-focused digital platform that connects farmers dir
 - Version Control: Git & GitHub
 
 🏗️ Project Structure
+
 KrishiMitra/
 ├── android/              # Android platform configuration
 ├── assets/               # Images and other application assets
@@ -44,10 +45,13 @@ KrishiMitra/
 ├── firestore.rules       # Firestore security rules, if present
 ├── .gitignore            # Git exclusion rules
 └── README.md             # Project documentation
+
 The structure above is an overview. Actual directories and files may differ.
 
 🛠️ Prerequisites
+
 Install the following tools before setting up the project:
+
 - Flutter SDK
 - Dart SDK (included with Flutter)
 - Android Studio or another supported Android development environment
@@ -56,6 +60,7 @@ Install the following tools before setting up the project:
 - A Firebase project with the required services configured
 
 ⚙️ Getting Started
+
 1. Clone the repository
 ```git clone <YOUR_PRIVATE_GITHUB_REPOSITORY_URL>```
 ```cd KrishiMitra```
@@ -75,14 +80,17 @@ Run the available tests:
 ```flutter test```
 
 3. Configure Firebase
+
   1. Use the appropriate Firebase project for your environment.
   2. Configure the necessary platform-specific Firebase settings.
   3. Set up required authentication and Firestore services.
   4. Configure local development credentials and environment-specific settings securely.
   5. Review Firestore rules and access permissions before deployment.
+
 Do not commit service-account private keys, local secrets, or development-only configuration files.
 
 4. Set Up the Backend
+
 Navigate to the backend directory:
 ```cd backend```
 
@@ -100,17 +108,22 @@ If tests are available, run:
 The backend may require local configuration, valid credentials, and access to the relevant Firebase services.
 
 🔐 Security
+
 Security is important for this project.
+
 - Never commit passwords, private API credentials, access tokens, or Firebase service-account private keys.
 - Keep local development settings out of Git.
 - Use environment variables or an appropriate local secret-management mechanism for sensitive configuration.
 - Review Firestore security rules before deployment.
 - Restrict repository access to authorized collaborators.
 - Rotate any credentials that may have been exposed.
+
 Note: A private GitHub repository restricts access to authorized users, but it does not replace secure credential management.
 
 🧪 Testing and Validation
+
 Run the following commands from the appropriate project directories:
+
 Purpose	Command
   1. Install Flutter dependencies - flutter pub get
   2. Analyze Flutter code	- flutter analyze
@@ -122,10 +135,13 @@ Purpose	Command
 Test results depend on the current project configuration, installed dependencies, and required services.
 
 🗺️ Development Status
+
 KrishiMitra is under active development. Application features, backend services, integrations, and localization resources may change as the project evolves.
 
 🤝 Contributions
+
 This repository is maintained as a private project. Access and contributions are limited to authorized collaborators.
 
 KRISHI MITRA
+
 Building digital connections for agriculture. 🌾
