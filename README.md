@@ -81,11 +81,11 @@ Run the available tests:
 
 3. Configure Firebase
 
-  1. Use the appropriate Firebase project for your environment.
-  2. Configure the necessary platform-specific Firebase settings.
-  3. Set up required authentication and Firestore services.
-  4. Configure local development credentials and environment-specific settings securely.
-  5. Review Firestore rules and access permissions before deployment.
+  - Use the appropriate Firebase project for your environment.
+  - Configure the necessary platform-specific Firebase settings.
+  - Set up required authentication and Firestore services.
+  - Configure local development credentials and environment-specific settings securely.
+  - Review Firestore rules and access permissions before deployment.
 
 Do not commit service-account private keys, local secrets, or development-only configuration files.
 
@@ -125,12 +125,12 @@ Note: A private GitHub repository restricts access to authorized users, but it d
 Run the following commands from the appropriate project directories:
 
 Purpose	Command
-  1. Install Flutter dependencies - flutter pub get
-  2. Analyze Flutter code	- flutter analyze
-  3. Run Flutter tests - flutter test
-  4. Restore .NET dependencies - dotnet restore  
-  5. Build the .NET backend - dotnet build
-  6. Run .NET tests - dotnet test
+ - Install Flutter dependencies - flutter pub get
+ - Analyze Flutter code	- flutter analyze
+ - Run Flutter tests - flutter test
+ - Restore .NET dependencies - dotnet restore
+ - Build the .NET backend - dotnet build
+ - Run .NET tests - dotnet test
 
 Test results depend on the current project configuration, installed dependencies, and required services.
 
