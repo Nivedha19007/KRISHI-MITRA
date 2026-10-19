@@ -5,6 +5,8 @@ import '../../core/constants/india_locations.dart';
 
 import '../../core/widgets/responsive_center.dart';
 
+import '../../core/localization/localized_helpers.dart';
+
 class PricePredictionDashboard extends StatefulWidget {
   const PricePredictionDashboard({super.key});
 
@@ -36,6 +38,7 @@ class _PricePredictionDashboardState extends State<PricePredictionDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     // Prediction calculations
     double todayPrice = 24.0;
     if (_selectedCrop == 'Rice') todayPrice = 52.0;
@@ -50,7 +53,7 @@ class _PricePredictionDashboardState extends State<PricePredictionDashboard> {
     const trend = 'Increasing 📈';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Future Price Prediction 🔮')),
+      appBar: AppBar(title: Text('${l10n.pricePredictionTitle} 🔮')),
       body: ResponsiveCenter(
         maxWidth: 1000,
         child: SingleChildScrollView(
@@ -69,8 +72,8 @@ class _PricePredictionDashboardState extends State<PricePredictionDashboard> {
                           Expanded(
                             child: DropdownButtonFormField<String>(
                               initialValue: _selectedState,
-                              decoration: const InputDecoration(
-                                labelText: 'State',
+                              decoration: InputDecoration(
+                                labelText: l10n.stateLabel,
                               ),
                               items: IndiaLocations.statesAndUTs
                                   .map(
@@ -91,14 +94,16 @@ class _PricePredictionDashboardState extends State<PricePredictionDashboard> {
                           Expanded(
                             child: DropdownButtonFormField<String>(
                               initialValue: _selectedCrop,
-                              decoration: const InputDecoration(
-                                labelText: 'Crop',
+                              decoration: InputDecoration(
+                                labelText: l10n.productLabel,
                               ),
                               items: _crops
                                   .map(
                                     (c) => DropdownMenuItem(
                                       value: c,
-                                      child: Text(c),
+                                      child: Text(
+                                        LocalizedHelpers.getCategoryName(context, c),
+                                      ),
                                     ),
                                   )
                                   .toList(),
@@ -113,9 +118,9 @@ class _PricePredictionDashboardState extends State<PricePredictionDashboard> {
                         initialValue: _varieties.contains(_selectedVariety)
                             ? _selectedVariety
                             : _varieties.first,
-                        decoration: const InputDecoration(
-                          labelText: 'Select Crop Variety',
-                          prefixIcon: Icon(Icons.park),
+                        decoration: InputDecoration(
+                          labelText: l10n.variety,
+                          prefixIcon: const Icon(Icons.park),
                         ),
                         items: _varieties
                             .map(

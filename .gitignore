@@ -63,3 +63,5 @@ backend/**/*.json
 *.p12
 .env
 .env.*
+# Local tool metadata
+.freebuff/

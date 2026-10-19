@@ -31,6 +31,19 @@ public class VerifyOtpResponse
     public string? CustomToken { get; set; }
 }
 
+public class SendEmailOtpRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty;
+}
+
+public class VerifyEmailOtpRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string PhoneNumber { get; set; } = string.Empty;
+    public string Otp { get; set; } = string.Empty;
+}
+
 public class ApiErrorResponse
 {
     public bool Success { get; set; } = false;

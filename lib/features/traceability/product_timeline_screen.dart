@@ -302,14 +302,14 @@ class ProductTimelineScreen extends ConsumerWidget {
           style: GoogleFonts.outfit(
             fontSize: 22,
             fontWeight: FontWeight.bold,
-            color: AppColors.primaryGreen,
+            color: Colors.white,
           ),
         ),
         Text(
           'Generated specifically from information entered by ${batchData.farmerName}',
           style: GoogleFonts.inter(
             fontSize: 14,
-            color: AppColors.textSecondary,
+            color: Colors.white.withValues(alpha: 0.85),
           ),
         ),
         const SizedBox(height: 16),
@@ -393,21 +393,25 @@ class ProductTimelineScreen extends ConsumerWidget {
                       children: [
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Text(
-                              milestone.title,
-                              style: GoogleFonts.outfit(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                                color: isCompleted
-                                    ? AppColors.primaryGreen
-                                    : AppColors.textSecondary,
+                            Expanded(
+                              child: Text(
+                                milestone.title,
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 17,
+                                  color: isCompleted
+                                      ? AppColors.primaryGreen
+                                      : AppColors.textSecondary,
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
-                                vertical: 2,
+                                vertical: 3,
                               ),
                               decoration: BoxDecoration(
                                 color: isCompleted
@@ -418,7 +422,7 @@ class ProductTimelineScreen extends ConsumerWidget {
                               child: Text(
                                 timeBadgeText,
                                 style: GoogleFonts.inter(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.bold,
                                   color: isCompleted
                                       ? AppColors.primaryGreen
@@ -436,11 +440,11 @@ class ProductTimelineScreen extends ConsumerWidget {
                                   ? 'Stage completed by farmer'
                                   : 'Pending stage update from farmer'),
                           style: GoogleFonts.inter(
-                            fontSize: 15,
+                            fontSize: 14,
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
                             const Icon(
@@ -449,22 +453,29 @@ class ProductTimelineScreen extends ConsumerWidget {
                               color: AppColors.textSecondary,
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              milestone.location.isNotEmpty
-                                  ? milestone.location
-                                  : batchData.farmLocation,
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textSecondary,
+                            Expanded(
+                              child: Text(
+                                milestone.location.isNotEmpty
+                                    ? milestone.location
+                                    : batchData.farmLocation,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                             ),
-                            const Spacer(),
-                            Text(
-                              'Farmer: ${batchData.farmerName}',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: AppColors.textMuted,
+                            const SizedBox(width: 8),
+                            Flexible(
+                              flex: 2,
+                              child: Text(
+                                'Farmer: ${batchData.farmerName}',
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: AppColors.textMuted,
+                                ),
                               ),
                             ),
                           ],

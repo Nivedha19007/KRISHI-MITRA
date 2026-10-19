@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/locale_provider.dart';
 import '../../data/models/post_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -48,6 +49,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
     final currentUser = ref.watch(currentUserProvider);
     final posts = ref.watch(communityProvider);
     final isFarmer = currentUser.role == UserRole.farmer;
+    final l10n = context.l10n;
 
     final filteredPosts = _selectedCategory == 'All'
         ? posts
@@ -61,7 +63,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Farmer Community',
+          l10n.community,
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: AppColors.primaryGreen,
@@ -71,7 +73,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
           if (isFarmer)
             IconButton(
               icon: const Icon(Icons.post_add),
-              tooltip: 'Create Post',
+              tooltip: l10n.community,
               onPressed: () {
                 Navigator.push(
                   context,
@@ -100,7 +102,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                   return Padding(
                     padding: const EdgeInsets.only(right: 8.0),
                     child: FilterChip(
-                      label: Text(cat),
+                      label: Text(cat == 'All' ? l10n.allCommodities : cat),
                       selected: isSelected,
                       selectedColor: AppColors.primaryGreen,
                       backgroundColor: AppColors.mintBg,
@@ -140,7 +142,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'No discussions found in $_selectedCategory',
+                            l10n.noDataFound,
                             style: GoogleFonts.outfit(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -295,7 +297,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                                       },
                                     ),
                                     Text(
-                                      '${post.likesCount} Helpful',
+                                      '${post.likesCount} ${l10n.helpful}',
                                       style: GoogleFonts.inter(
                                         fontSize: 15,
                                         fontWeight: FontWeight.bold,
@@ -310,7 +312,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      '${post.comments.length} Replies',
+                                      '${post.comments.length} ${l10n.replies}',
                                       style: GoogleFonts.inter(
                                         fontSize: 15,
                                         fontWeight: FontWeight.bold,
@@ -354,7 +356,7 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                                                 ),
                                               ),
                                               Text(
-                                                'Farmer Reply',
+                                                l10n.farmerReply,
                                                 style: GoogleFonts.inter(
                                                   fontSize: 12,
                                                   color: AppColors.textMuted,
@@ -383,10 +385,9 @@ class _CommunityFeedScreenState extends ConsumerState<CommunityFeedScreen> {
                                     Expanded(
                                       child: TextField(
                                         controller: _replyControllers[post.id],
-                                        decoration: const InputDecoration(
-                                          hintText:
-                                              'Reply to farmer discussion...',
-                                          contentPadding: EdgeInsets.symmetric(
+                                        decoration: InputDecoration(
+                                          hintText: l10n.replyHint,
+                                          contentPadding: const EdgeInsets.symmetric(
                                             horizontal: 14,
                                             vertical: 10,
                                           ),

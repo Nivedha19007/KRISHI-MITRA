@@ -73,6 +73,12 @@ class MarketRepository {
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> && decoded['status'] == 'error') {
+          final msg = decoded['message'] ?? decoded['error'] ?? 'API error';
+          debugPrint('[MARKET_REPO_ERROR] Backend status error: $msg');
+          throw Exception(msg);
+        }
+
         List<dynamic>? rawRecords;
         if (decoded is Map<String, dynamic>) {
           rawRecords = decoded['records'] as List<dynamic>?;
@@ -84,21 +90,120 @@ class MarketRepository {
           final list = rawRecords
               .whereType<Map<String, dynamic>>()
               .map((r) => MandiPriceModel.fromAgmarknetApi(r))
+              .where((model) {
+                if (state != null && state != 'All' && !_matchNormalized(model.state, state)) {
+                  return false;
+                }
+                if (district != null && district != 'All' && !_matchNormalized(model.district, district)) {
+                  return false;
+                }
+                if (commodity != null && commodity != 'All' && !_matchCommodity(model.product, commodity)) {
+                  return false;
+                }
+                return true;
+              })
               .toList();
-          debugPrint('[MARKET_REPO] Successfully parsed ${list.length} Mandi records from backend.');
+          debugPrint('[MARKET_REPO] Successfully parsed ${list.length} Mandi records matching query.');
           return list;
         }
         debugPrint('[MARKET_REPO] Backend returned 200 OK with 0 records for query.');
         return [];
       } else {
-        final errorMsg = 'Backend returned HTTP ${response.statusCode}: ${response.body}';
+        String errorMsg = 'Failed to load Mandi prices (HTTP ${response.statusCode})';
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map<String, dynamic> && (decoded['message'] != null || decoded['error'] != null)) {
+            errorMsg = decoded['message']?.toString() ?? decoded['error']?.toString() ?? errorMsg;
+          }
+        } catch (_) {}
         debugPrint('[MARKET_REPO_ERROR] $errorMsg');
-        throw Exception('Failed to load Mandi prices (HTTP ${response.statusCode})');
+        throw Exception(errorMsg);
       }
     } catch (e) {
       debugPrint('[MARKET_REPO_ERROR] Exception fetching live mandi prices: $e');
       rethrow;
     }
+  }
+
+  static String _normalize(String input) {
+    if (input.isEmpty) return '';
+    return input.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '').trim();
+  }
+
+  static bool _matchNormalized(String? value, String? target) {
+    if (target == null || target.trim().isEmpty || target.trim() == 'All') return true;
+    if (value == null || value.trim().isEmpty) return false;
+    final valNorm = _normalize(value);
+    final targetNorm = _normalize(target);
+    if (valNorm == targetNorm) return true;
+    if (valNorm.contains(targetNorm) || targetNorm.contains(valNorm)) return true;
+
+    final stateAliases = {
+      'Kerala': ['kerala', 'keralam'],
+      'Keralam': ['kerala', 'keralam'],
+      'Odisha': ['odisha', 'orissa'],
+      'Orissa': ['odisha', 'orissa'],
+      'Puducherry': ['puducherry', 'pondicherry'],
+      'Pondicherry': ['puducherry', 'pondicherry'],
+    };
+
+    for (final entry in stateAliases.entries) {
+      final keyNorm = _normalize(entry.key);
+      if (targetNorm == keyNorm || targetNorm.contains(keyNorm) || keyNorm.contains(targetNorm)) {
+        for (final alias in entry.value) {
+          final aliasNorm = _normalize(alias);
+          if (valNorm == aliasNorm || valNorm.contains(aliasNorm) || aliasNorm.contains(valNorm)) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  static bool _matchCommodity(String? value, String? target) {
+    if (target == null || target.trim().isEmpty || target.trim() == 'All') return true;
+    if (value == null || value.trim().isEmpty) return false;
+    final valNorm = _normalize(value);
+    final targetNorm = _normalize(target);
+    if (valNorm == targetNorm || valNorm.contains(targetNorm) || targetNorm.contains(valNorm)) {
+      return true;
+    }
+    final synonyms = {
+      'tomato': ['tomato', 'tamato'],
+      'potato': ['potato', 'aloo'],
+      'onion': ['onion', 'pyaz'],
+      'rice': ['rice', 'paddy', 'paddycommon', 'bpt', 'dhan'],
+      'paddy': ['rice', 'paddy', 'paddycommon', 'bpt', 'dhan'],
+      'wheat': ['wheat', 'gehun'],
+      'banana': ['banana', 'bananaripe', 'bananagreen'],
+      'chilli': ['chilli', 'chillies', 'greenchilli', 'chili', 'chilired', 'drychillies', 'capsicum'],
+      'groundnut': ['groundnut', 'groundnutseed', 'peanut'],
+      'ginger': ['ginger', 'gingergreen', 'gingerdry'],
+      'brinjal': ['brinjal', 'eggplant'],
+      'maize': ['maize', 'corn'],
+      'cucumber': ['cucumbar', 'cucumbarkheera', 'cucumber', 'kheera'],
+      'okra': ['bhindiladiesfinger', 'bhindi', 'ladiesfinger'],
+      'ladies finger': ['bhindiladiesfinger', 'bhindi', 'ladiesfinger'],
+      'cauliflower': ['cauliflower'],
+      'cabbage': ['cabbage'],
+      'carrot': ['carrot'],
+      'apple': ['apple'],
+      'tur': ['redgramarharturwhole', 'tur', 'arhar'],
+      'arhar': ['redgramarharturwhole', 'tur', 'arhar'],
+      'urad': ['blackgramurdbeanswhole', 'urad', 'urd'],
+      'moong': ['greengrammoongwhole', 'moong'],
+      'chana': ['bengalgramgramwhole', 'chana', 'gram'],
+    };
+    for (final entry in synonyms.entries) {
+      final keyNorm = _normalize(entry.key);
+      if (targetNorm == keyNorm || targetNorm.contains(keyNorm) || keyNorm.contains(targetNorm)) {
+        for (final syn in entry.value) {
+          if (valNorm.contains(syn)) return true;
+        }
+      }
+    }
+    return false;
   }
 
   List<MandiPriceModel> getMandiPrices({

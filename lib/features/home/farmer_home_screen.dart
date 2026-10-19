@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/localization/locale_provider.dart';
+import '../../core/localization/localized_helpers.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/product_repository.dart';
@@ -76,7 +76,7 @@ class FarmerHomeScreen extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'Welcome, ${user.name} 🌾',
+                            '${l10n.welcomeBack}, ${user.name} 🌾',
                             style: GoogleFonts.outfit(
                               fontSize: 26,
                               fontWeight: FontWeight.bold,
@@ -95,10 +95,10 @@ class FarmerHomeScreen extends ConsumerWidget {
                           ),
                           child: Text(
                             user.verificationStatus == VerificationStatus.verified
-                                ? '✓ Verified Farmer'
+                                ? '✓ ${l10n.verifiedFarmer}'
                                 : (user.verificationStatus == VerificationStatus.pending
-                                    ? '⏳ Verification Pending'
-                                    : '❌ Verification Rejected'),
+                                    ? '⏳ ${l10n.pendingVerification}'
+                                    : '❌ ${l10n.error}'),
                             style: GoogleFonts.inter(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
@@ -114,7 +114,7 @@ class FarmerHomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '${user.village.isNotEmpty ? "${user.village}, " : ""}${user.district}, ${user.state} • ${user.farmerType}',
+                      '${user.village.isNotEmpty ? "${user.village}, " : ""}${user.district}, ${user.state} • ${LocalizedHelpers.getFarmerTypeName(context, user.farmerType)}',
                       style: GoogleFonts.inter(
                         color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 15,
@@ -145,7 +145,7 @@ class FarmerHomeScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Account Verification Pending',
+                              l10n.accountVerificationPendingTitle,
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
@@ -153,7 +153,7 @@ class FarmerHomeScreen extends ConsumerWidget {
                               ),
                             ),
                             Text(
-                              'Your farmer profile is under review by government/admin officers. Market features remain active.',
+                              l10n.accountVerificationPendingDesc,
                               style: GoogleFonts.inter(
                                 fontSize: 13,
                                 color: AppColors.textPrimary,
@@ -168,13 +168,20 @@ class FarmerHomeScreen extends ConsumerWidget {
               ],
               const SizedBox(height: 20),
 
-              // Sales Analytics & Revenue Overview
+              // Sales Analytics & Revenue Overview (Standalone Title in White)
               Text(
-                'Sales Analytics & Revenue Overview',
+                l10n.salesAnalyticsOverview,
                 style: GoogleFonts.outfit(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: Colors.white,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      blurRadius: 6,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 12),
@@ -182,15 +189,15 @@ class FarmerHomeScreen extends ConsumerWidget {
               Row(
                 children: [
                   _buildMetricCard(
-                    'Total Revenue',
+                    l10n.totalRevenue,
                     '₹${farmerStats.totalRevenue.toStringAsFixed(0)}',
                     Icons.payments_rounded,
                     AppColors.accentGold,
                   ),
                   const SizedBox(width: 10),
                   _buildMetricCard(
-                    'Products Sold',
-                    '${farmerStats.totalProductsSold.toStringAsFixed(0)} units',
+                    l10n.productsSold,
+                    '${farmerStats.totalProductsSold.toStringAsFixed(0)} ${l10n.unitItem}',
                     Icons.inventory_rounded,
                     AppColors.primaryGreen,
                   ),
@@ -200,14 +207,14 @@ class FarmerHomeScreen extends ConsumerWidget {
               Row(
                 children: [
                   _buildMetricCard(
-                    'Total Orders',
+                    l10n.totalOrders,
                     '${farmerStats.totalOrders}',
                     Icons.shopping_bag_rounded,
                     Colors.blue,
                   ),
                   const SizedBox(width: 10),
                   _buildMetricCard(
-                    'Pending Orders',
+                    l10n.pendingOrders,
                     '${farmerStats.pendingOrders}',
                     Icons.pending_actions_rounded,
                     Colors.orange,
@@ -218,17 +225,17 @@ class FarmerHomeScreen extends ConsumerWidget {
               Row(
                 children: [
                   _buildMetricCard(
-                    'Completed Orders',
+                    l10n.completedOrders,
                     '${farmerStats.completedOrders}',
                     Icons.check_circle_outline_rounded,
                     AppColors.verifiedGreen,
                   ),
                   const SizedBox(width: 10),
                   _buildMetricCard(
-                    'Average Rating',
+                    l10n.averageRating,
                     farmerStats.totalReviews > 0
                         ? '${farmerStats.averageRating} ★ (${farmerStats.totalReviews})'
-                        : 'No reviews yet',
+                        : l10n.noReviewsYet,
                     Icons.star_rounded,
                     Colors.amber.shade700,
                   ),
@@ -238,11 +245,11 @@ class FarmerHomeScreen extends ConsumerWidget {
 
               // Quick Actions Header
               Text(
-                'Farmer Responsibilities & Actions',
+                l10n.farmerResponsibilitiesActions,
                 style: GoogleFonts.outfit(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: 12),
@@ -255,12 +262,15 @@ class FarmerHomeScreen extends ConsumerWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
-                childAspectRatio: 1.35,
+                childAspectRatio: context.isMobile
+                    ? 1.05
+                    : (context.isTablet ? 1.25 : 1.35),
                 children: [
+
                   _buildActionButton(
                     context,
-                    'Sell Crop',
-                    'List new harvest',
+                    l10n.sellCrop,
+                    l10n.listNewHarvest,
                     Icons.add_circle,
                     AppColors.primaryGreen,
                     () {
@@ -274,8 +284,8 @@ class FarmerHomeScreen extends ConsumerWidget {
                   ),
                   _buildActionButton(
                     context,
-                    'My Products',
-                    'Manage listings',
+                    l10n.myProducts,
+                    l10n.manageListings,
                     Icons.inventory_2_rounded,
                     AppColors.primaryGreen,
                     () {
@@ -289,8 +299,8 @@ class FarmerHomeScreen extends ConsumerWidget {
                   ),
                   _buildActionButton(
                     context,
-                    'Orders Received',
-                    'Manage buyers',
+                    l10n.ordersReceived,
+                    l10n.manageBuyers,
                     Icons.receipt_long,
                     Colors.blue,
                     () {
@@ -304,8 +314,8 @@ class FarmerHomeScreen extends ConsumerWidget {
                   ),
                   _buildActionButton(
                     context,
-                    'Live Mandi Prices',
-                    'Check APMC rates',
+                    l10n.mandiPrices,
+                    l10n.checkApmcRates,
                     Icons.storefront,
                     AppColors.accentGold,
                     () {
@@ -319,8 +329,8 @@ class FarmerHomeScreen extends ConsumerWidget {
                   ),
                   _buildActionButton(
                     context,
-                    'Farmer Community',
-                    'Q&A & Machinery',
+                    l10n.farmerCommunity,
+                    l10n.qnaMachinery,
                     Icons.forum,
                     Colors.orange,
                     () {
@@ -349,13 +359,17 @@ class FarmerHomeScreen extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Recent Customer Orders',
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
+                          Expanded(
+                            child: Text(
+                              l10n.recentCustomerOrders,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 8),
                           TextButton(
                             onPressed: () {
                               Navigator.push(
@@ -366,7 +380,7 @@ class FarmerHomeScreen extends ConsumerWidget {
                               );
                             },
                             child: Text(
-                              'View All Orders',
+                              l10n.viewAllOrders,
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 color: AppColors.primaryGreen,
@@ -376,12 +390,13 @@ class FarmerHomeScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+
                       if (orders.isEmpty) ...[
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 20),
                           child: Center(
                             child: Text(
-                              'No customer orders received yet.',
+                              l10n.noCustomerOrders,
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 color: AppColors.textMuted,
@@ -407,14 +422,14 @@ class FarmerHomeScreen extends ConsumerWidget {
                                 ),
                               ),
                               title: Text(
-                                '${o.productName} (${o.quantity} ${o.unit})',
+                                '${o.productName} (${o.quantity} ${LocalizedHelpers.getUnitName(context, o.unit)})',
                                 style: GoogleFonts.outfit(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
                               ),
                               subtitle: Text(
-                                'Buyer: ${o.customerName} • Status: ${o.orderStatus}',
+                                '${l10n.buyerStatus}: ${o.customerName} • Status: ${o.orderStatus}',
                                 style: GoogleFonts.inter(fontSize: 13),
                               ),
                               trailing: Text(
@@ -446,7 +461,7 @@ class FarmerHomeScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Product Performance Breakdown',
+                        l10n.productPerformanceBreakdown,
                         style: GoogleFonts.outfit(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
@@ -458,7 +473,7 @@ class FarmerHomeScreen extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           child: Center(
                             child: Text(
-                              'No active crops listed yet.',
+                              l10n.noActiveCrops,
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 color: AppColors.textMuted,
@@ -506,14 +521,14 @@ class FarmerHomeScreen extends ConsumerWidget {
                                           ),
                                         ),
                                         Text(
-                                          'Variety: ${p.variety} • Stock: ${p.availableStock} ${p.unit}',
+                                          '${l10n.varietyStock}: ${p.variety} • ${l10n.availableStock}: ${p.availableStock} ${LocalizedHelpers.getUnitName(context, p.unit)}',
                                           style: GoogleFonts.inter(
                                             fontSize: 13,
                                             color: AppColors.textSecondary,
                                           ),
                                         ),
                                         Text(
-                                          'Sold: ${unitsSold.toStringAsFixed(0)} ${p.unit} • Orders: ${productOrders.length}',
+                                          '${l10n.soldOrders}: ${unitsSold.toStringAsFixed(0)} ${LocalizedHelpers.getUnitName(context, p.unit)} • ${l10n.totalOrders}: ${productOrders.length}',
                                           style: GoogleFonts.inter(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w600,
@@ -546,7 +561,7 @@ class FarmerHomeScreen extends ConsumerWidget {
                                           Text(
                                             p.reviewCount > 0
                                                 ? '${p.rating} (${p.reviewCount})'
-                                                : 'No ratings',
+                                                : l10n.noRatings,
                                             style: GoogleFonts.inter(
                                               fontSize: 12,
                                               fontWeight: FontWeight.bold,
@@ -579,7 +594,7 @@ class FarmerHomeScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Customer Feedback & Ratings (${reviews.length})',
+                        '${l10n.customerFeedbackRatings} (${reviews.length})',
                         style: GoogleFonts.outfit(
                           fontWeight: FontWeight.bold,
                           fontSize: 18,
@@ -591,7 +606,7 @@ class FarmerHomeScreen extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           child: Center(
                             child: Text(
-                              'No customer feedback received yet.',
+                              l10n.noCustomerFeedback,
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 color: AppColors.textMuted,
@@ -685,12 +700,12 @@ class FarmerHomeScreen extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(16.0),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.white.withValues(alpha: 0.90),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.borderLight),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.40)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -742,12 +757,12 @@ class FarmerHomeScreen extends ConsumerWidget {
   ) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white.withValues(alpha: 0.90),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.borderLight),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.40)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -770,19 +785,24 @@ class FarmerHomeScreen extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.outfit(
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 14,
                   color: AppColors.textPrimary,
                 ),
               ),
               Text(
                 subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
-                  fontSize: 13,
+                  fontSize: 11,
                   color: AppColors.textSecondary,
                 ),
               ),
+
             ],
           ),
         ),

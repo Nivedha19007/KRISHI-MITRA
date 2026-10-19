@@ -11,6 +11,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentLocale = ref.watch(localeProvider);
+    final l10n = context.l10n;
 
     final languages = [
       {'name': 'English', 'code': 'en'},
@@ -20,23 +21,18 @@ class SettingsScreen extends ConsumerWidget {
       {'name': 'ಕನ್ನಡ (Kannada)', 'code': 'kn'},
       {'name': 'മലയാളം (Malayalam)', 'code': 'ml'},
       {'name': 'मराठी (Marathi)', 'code': 'mr'},
-      {'name': 'ગુજરાતી (Gujarati)', 'code': 'gu'},
-      {'name': 'ਪੰਜਾਬੀ (Punjabi)', 'code': 'pa'},
-      {'name': 'বাংলা (Bengali)', 'code': 'bn'},
-      {'name': 'ଓଡ଼ିଆ (Odia)', 'code': 'or'},
-      {'name': 'অসমীয়া (Assamese)', 'code': 'as'},
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Application Settings ⚙️')),
+      appBar: AppBar(title: Text('${l10n.settings} ⚙️')),
       body: ResponsiveCenter(
         maxWidth: 800,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text(
-              'App Preferences',
-              style: TextStyle(
+            Text(
+              l10n.settings,
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
                 color: AppColors.primaryGreen,
@@ -52,9 +48,9 @@ class SettingsScreen extends ConsumerWidget {
                       Icons.language,
                       color: AppColors.primaryGreen,
                     ),
-                    title: const Text(
-                      'Application Language',
-                      style: TextStyle(
+                    title: Text(
+                      l10n.selectAppLanguage,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -75,9 +71,9 @@ class SettingsScreen extends ConsumerWidget {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'Select Language',
-                                style: TextStyle(
+                              Text(
+                                l10n.selectAppLanguage,
+                                style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -116,40 +112,14 @@ class SettingsScreen extends ConsumerWidget {
                       );
                     },
                   ),
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    secondary: const Icon(
-                      Icons.dark_mode_outlined,
-                      color: AppColors.primaryGreen,
-                    ),
-                    title: const Text(
-                      'Material 3 Dark Mode',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    subtitle: const Text(
-                      'Switch between Light and Dark themes',
-                      style: TextStyle(fontSize: 14),
-                    ),
-                    value: false,
-                    onChanged: (val) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Theme settings updated.'),
-                        ),
-                      );
-                    },
-                  ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
 
-            const Text(
-              'Notifications & Privacy',
-              style: TextStyle(
+            Text(
+              l10n.notifications,
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
                 color: AppColors.primaryGreen,
@@ -165,44 +135,28 @@ class SettingsScreen extends ConsumerWidget {
                       Icons.notifications_active_outlined,
                       color: AppColors.primaryGreen,
                     ),
-                    title: const Text(
-                      'Push Notifications',
-                      style: TextStyle(
+                    title: Text(
+                      l10n.notifications,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    subtitle: const Text(
-                      'Order updates & Mandi price alerts',
-                      style: TextStyle(fontSize: 14),
+                    subtitle: Text(
+                      '${l10n.orders} & ${l10n.mandiPrices}',
+                      style: const TextStyle(fontSize: 14),
                     ),
                     value: true,
                     onChanged: (val) {},
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.security,
-                      color: AppColors.primaryGreen,
-                    ),
-                    title: const Text(
-                      'Privacy & Data Protection',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {},
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
 
-            const Text(
-              'Support & About',
-              style: TextStyle(
+            Text(
+              l10n.helpSupport,
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
                 color: AppColors.primaryGreen,
@@ -218,9 +172,9 @@ class SettingsScreen extends ConsumerWidget {
                       Icons.help_outline,
                       color: AppColors.primaryGreen,
                     ),
-                    title: const Text(
-                      'Help & Farmer Support',
-                      style: TextStyle(
+                    title: Text(
+                      l10n.helpSupport,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
@@ -237,9 +191,9 @@ class SettingsScreen extends ConsumerWidget {
                       Icons.info_outline,
                       color: AppColors.primaryGreen,
                     ),
-                    title: const Text(
-                      'About KRISHI MITRA',
-                      style: TextStyle(
+                    title: Text(
+                      l10n.aboutApp,
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),

@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/localization/locale_provider.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/krishi_background.dart';
 import 'features/auth/login_screen.dart';
+import 'features/onboarding/welcome_screen.dart';
 import 'features/traceability/public_product_timeline_screen.dart';
 import 'l10n/app_localizations.dart';
 
@@ -64,6 +66,8 @@ class KrishiMitraApp extends ConsumerWidget {
       title: isWebTrace ? 'KRISHI MITRA | Crop Traceability' : 'KRISHI MITRA',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      builder: (context, child) =>
+          KrishiBackground(child: child ?? const SizedBox.shrink()),
       locale: currentLocale,
       supportedLocales: const [
         Locale('en', ''), // English
@@ -73,11 +77,6 @@ class KrishiMitraApp extends ConsumerWidget {
         Locale('kn', ''), // Kannada
         Locale('ml', ''), // Malayalam
         Locale('mr', ''), // Marathi
-        Locale('gu', ''), // Gujarati
-        Locale('pa', ''), // Punjabi
-        Locale('bn', ''), // Bengali
-        Locale('or', ''), // Odia
-        Locale('as', ''), // Assamese
       ],
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -101,7 +100,7 @@ class KrishiMitraApp extends ConsumerWidget {
 
         return [
           MaterialPageRoute(
-            builder: (_) => const LoginScreen(),
+            builder: (_) => const WelcomeScreen(),
             settings: const RouteSettings(name: '/'),
           ),
         ];
@@ -125,8 +124,15 @@ class KrishiMitraApp extends ConsumerWidget {
           );
         }
 
+        if (name == '/login') {
+          return MaterialPageRoute(
+            builder: (_) => const LoginScreen(),
+            settings: settings,
+          );
+        }
+
         return MaterialPageRoute(
-          builder: (_) => const LoginScreen(),
+          builder: (_) => const WelcomeScreen(),
           settings: settings,
         );
       },

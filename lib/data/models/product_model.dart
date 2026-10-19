@@ -34,10 +34,16 @@ class ProductModel {
   final VerificationStatus certificationStatus;
   final String farmingType; // Organic, Conventional, GAP
   final String? batchId;
+  final String? certificateId;
   final bool isPublished;
   final double rating;
   final int reviewCount;
+  final double? bulkDiscountMinQty;
+  final double? bulkDiscountPricePerUnit;
+  final String? rejectionReason;
   final DateTime createdAt;
+
+  bool get isOrganicVerified => isOrganic && certificationStatus == VerificationStatus.verified;
 
   ProductModel({
     required this.id,
@@ -71,9 +77,13 @@ class ProductModel {
     this.certificationStatus = VerificationStatus.pending,
     this.farmingType = 'Conventional',
     this.batchId,
+    this.certificateId,
     this.isPublished = true,
     this.rating = 0.0,
     this.reviewCount = 0,
+    this.bulkDiscountMinQty,
+    this.bulkDiscountPricePerUnit,
+    this.rejectionReason,
     DateTime? createdAt,
   }) : latitude =
            latitude ??
@@ -116,9 +126,13 @@ class ProductModel {
     VerificationStatus? certificationStatus,
     String? farmingType,
     String? batchId,
+    String? certificateId,
     bool? isPublished,
     double? rating,
     int? reviewCount,
+    double? bulkDiscountMinQty,
+    double? bulkDiscountPricePerUnit,
+    String? rejectionReason,
     DateTime? createdAt,
   }) {
     return ProductModel(
@@ -153,9 +167,13 @@ class ProductModel {
       certificationStatus: certificationStatus ?? this.certificationStatus,
       farmingType: farmingType ?? this.farmingType,
       batchId: batchId ?? this.batchId,
+      certificateId: certificateId ?? this.certificateId,
       isPublished: isPublished ?? this.isPublished,
       rating: rating ?? this.rating,
       reviewCount: reviewCount ?? this.reviewCount,
+      bulkDiscountMinQty: bulkDiscountMinQty ?? this.bulkDiscountMinQty,
+      bulkDiscountPricePerUnit: bulkDiscountPricePerUnit ?? this.bulkDiscountPricePerUnit,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -193,9 +211,13 @@ class ProductModel {
       'certificationStatus': certificationStatus.name,
       'farmingType': farmingType,
       'batchId': batchId,
+      'certificateId': certificateId,
       'isPublished': isPublished,
       'rating': rating,
       'reviewCount': reviewCount,
+      'bulkDiscountMinQty': bulkDiscountMinQty,
+      'bulkDiscountPricePerUnit': bulkDiscountPricePerUnit,
+      'rejectionReason': rejectionReason,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -248,9 +270,13 @@ class ProductModel {
       ),
       farmingType: map['farmingType'] ?? 'Organic',
       batchId: map['batchId'],
+      certificateId: map['certificateId'],
       isPublished: map['isPublished'] ?? true,
       rating: (map['rating'] as num?)?.toDouble() ?? 4.8,
       reviewCount: map['reviewCount'] ?? 12,
+      bulkDiscountMinQty: (map['bulkDiscountMinQty'] as num?)?.toDouble(),
+      bulkDiscountPricePerUnit: (map['bulkDiscountPricePerUnit'] as num?)?.toDouble(),
+      rejectionReason: map['rejectionReason'],
       createdAt: map['createdAt'] != null
           ? DateTime.parse(map['createdAt'])
           : DateTime.now(),

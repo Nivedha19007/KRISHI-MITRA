@@ -1,16 +1,21 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/localized_helpers.dart';
 import '../../core/widgets/responsive_center.dart';
+import '../../data/models/product_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/product_repository.dart';
 import 'farmer_timeline_edit_screen.dart';
+import 'product_qr_screen.dart';
 import 'public_product_timeline_screen.dart';
 
 class QrScannerScreen extends ConsumerStatefulWidget {
@@ -63,132 +68,364 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
     final currentUser = FirebaseAuth.instance.currentUser;
     final userModel = ref.read(currentUserProvider);
 
-    // EXPERIENCE A: If an authenticated farmer scans inside the Flutter app:
-    if (currentUser != null && userModel.role == UserRole.farmer) {
-      try {
-        final repo = ref.read(productRepositoryProvider);
-        final batch = await repo.getBatchById(cleanCode);
+    try {
+      final repo = ref.read(productRepositoryProvider);
+      final batch = await repo.getBatchById(cleanCode);
 
-        if (!mounted) return;
+      if (!mounted) return;
 
-        if (batch == null) {
-          showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Text(
-                'Product Batch Not Found',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
-              ),
-              content: Text(
-                'No product batch was found matching ID: "$cleanCode".',
-                style: GoogleFonts.inter(fontSize: 14),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('OK'),
-                ),
-              ],
+      // If owner farmer, open timeline editor
+      if (currentUser != null &&
+          userModel.role == UserRole.farmer &&
+          batch != null &&
+          (batch.farmerId == currentUser.uid || batch.farmerName == userModel.name)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✓ Verified Owner! Opening Timeline Editor for ${batch.productName}...',
             ),
-          );
-        } else if (batch.farmerId == currentUser.uid ||
-            batch.farmerName == userModel.name) {
-          // Ownership Verified! Open Farmer Timeline Editor inside Flutter App (NO Chrome, NO browser)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '✓ Verified Owner! Opening Timeline Editor for ${batch.productName}...',
-              ),
-              backgroundColor: AppColors.primaryGreen,
-              duration: const Duration(seconds: 1),
-            ),
-          );
+            backgroundColor: AppColors.primaryGreen,
+            duration: const Duration(seconds: 1),
+          ),
+        );
 
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => FarmerTimelineEditScreen(
-                batchId: cleanCode,
-                productName: batch.productName,
-              ),
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FarmerTimelineEditScreen(
+              batchId: cleanCode,
+              productName: batch.productName,
             ),
-          );
-        } else {
-          // Ownership Check Failed: Batch belongs to another farmer
-          showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Row(
+          ),
+        );
+      } else {
+        // Customer or visitor scan: view public timeline
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PublicProductTimelineScreen(batchId: cleanCode),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('[QR_SCAN_ERROR] $e');
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PublicProductTimelineScreen(batchId: cleanCode),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessingScan = false);
+      }
+    }
+  }
+
+  void _showBatchQrModal(BuildContext context, Map<String, dynamic> b) {
+    final batchId = b['id'] as String;
+    final cropName = b['crop'] as String;
+    final farmerName = b['farmer'] as String;
+    final status = b['status'] as String;
+    final ProductModel? product = b['product'] as ProductModel?;
+    final traceUrl = 'https://krishi-mitra-38a5f.web.app/trace/$batchId';
+    final l10n = context.l10n;
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final userModel = ref.read(currentUserProvider);
+    final isOwner = product != null &&
+        currentUser != null &&
+        (product.farmerId == currentUser.uid || product.farmerName == userModel.name);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.gpp_bad_rounded,
-                    color: Colors.red,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Access Denied',
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red.shade700,
+                  // Top Drag Handle
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
+
+                  // Header Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.qr_code_2_rounded, color: AppColors.primaryGreen, size: 26),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Crop QR & Traceability',
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Crop & Farmer Info Card
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.mintBg,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          cropName,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryDarkGreen,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${l10n.farmerLabel}: $farmerName • $status',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // QR Code Display
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppColors.borderLight),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 15,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: QrImageView(
+                      data: traceUrl,
+                      version: QrVersions.auto,
+                      size: 200.0,
+                      backgroundColor: Colors.white,
+                      eyeStyle: const QrEyeStyle(
+                        eyeShape: QrEyeShape.square,
+                        color: AppColors.primaryDarkGreen,
+                      ),
+                      dataModuleStyle: const QrDataModuleStyle(
+                        dataModuleShape: QrDataModuleShape.square,
+                        color: AppColors.primaryDarkGreen,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Batch ID Chip
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Batch ID: $batchId',
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: traceUrl));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Traceability link copied to clipboard!'),
+                                backgroundColor: AppColors.primaryGreen,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          child: const Icon(Icons.copy_rounded, size: 16, color: AppColors.primaryGreen),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Action Buttons:
+                  // 1. View Timeline Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PublicProductTimelineScreen(batchId: batchId),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.timeline_rounded, size: 20),
+                      label: Text(
+                        'View Crop Timeline',
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 2. Scan / Verify with Camera
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primaryGreen,
+                        side: const BorderSide(color: AppColors.primaryGreen, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _searchBatch(traceUrl);
+                      },
+                      icon: const Icon(Icons.qr_code_scanner, size: 20),
+                      label: Text(
+                        'Scan & Verify Batch',
+                        style: GoogleFonts.outfit(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // 3. Edit Timeline (for owners/farmers)
+                  if (isOwner) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primaryDarkGreen,
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => FarmerTimelineEditScreen(
+                                batchId: batchId,
+                                productName: cropName,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.edit_calendar_rounded, size: 18),
+                        label: Text(
+                          'Edit Timeline Stages',
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  if (product != null) ...[
+                    const SizedBox(height: 4),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ProductQrScreen(product: product),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        'Open Full QR Certificate Page →',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryGreen,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              content: Text(
-                'This product belongs to another farmer (${batch.farmerName}). You do not have permission to edit this crop timeline.',
-                style: GoogleFonts.inter(fontSize: 14),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('CLOSE'),
-                ),
-              ],
             ),
-          );
-        }
-      } catch (e) {
-        debugPrint('[QR_SCAN_ERROR] $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error loading batch: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() => _isProcessingScan = false);
-        }
-      }
-      return;
-    }
-
-    // EXPERIENCE B: Customer or unauthenticated in-app scan: view Public Timeline
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => PublicProductTimelineScreen(batchId: cleanCode),
-      ),
-    ).then((_) {
-      if (mounted) {
-        setState(() {
-          _isProcessingScan = false;
-        });
-      }
-    });
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final allProducts = ref.watch(productsProvider);
     final sampleBatches = [
       {
         'id': 'TOM-ERD-101',
@@ -227,10 +464,63 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
       },
     ];
 
+    // Combine farmer uploaded products with sample demo batches
+    final List<Map<String, dynamic>> displayedBatches = [];
+
+    for (final p in allProducts) {
+      final batchId = (p.batchId != null && p.batchId!.isNotEmpty)
+          ? p.batchId!
+          : 'BATCH-${p.id}';
+
+      String status = 'Harvested 🌾';
+      if (p.dispatched) {
+        status = 'Dispatched 🚚';
+      } else if (p.packed) {
+        status = 'Packed 📦';
+      } else if (p.qualityChecked) {
+        status = 'Quality Checked 🧪';
+      }
+
+      String icon = '🥬';
+      final n = p.name.toLowerCase();
+      if (n.contains('tomato')) {
+        icon = '🍅';
+      } else if (n.contains('rice') || n.contains('paddy')) {
+        icon = '🌾';
+      } else if (n.contains('onion')) {
+        icon = '🧅';
+      } else if (n.contains('carrot')) {
+        icon = '🥕';
+      } else if (n.contains('potato')) {
+        icon = '🥔';
+      } else if (n.contains('banana')) {
+        icon = '🍌';
+      } else if (n.contains('apple')) {
+        icon = '🍎';
+      } else if (n.contains('cotton')) {
+        icon = '🌱';
+      }
+
+      displayedBatches.add({
+        'id': batchId,
+        'crop': '${p.name}${p.variety.isNotEmpty ? " (${p.variety})" : ""}',
+        'farmer': p.farmerName.isNotEmpty ? p.farmerName : 'Verified Farmer',
+        'icon': icon,
+        'status': status,
+        'product': p,
+      });
+    }
+
+    for (final s in sampleBatches) {
+      if (!displayedBatches.any((b) => b['id'] == s['id'])) {
+        displayedBatches.add(s);
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Crop QR Scanner',
+          l10n.scanQrCodeTitle,
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 22),
         ),
         backgroundColor: AppColors.primaryGreen,
@@ -261,7 +551,7 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Scan Produce QR Code',
+                        l10n.scanQrCodeTitle,
                         style: GoogleFonts.outfit(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -270,7 +560,7 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Farmers scanning their own produce open the In-App Timeline Editor. Customers viewing scanned QR codes see the Public Read-Only Timeline.',
+                        l10n.alignCameraNotice,
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
                           color: AppColors.textSecondary,
@@ -303,8 +593,8 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
                           ),
                           label: Text(
                             _isCameraActive
-                                ? 'Close Camera Scanner'
-                                : 'Launch Camera Scanner',
+                                ? l10n.closeScanner
+                                : l10n.launchScanner,
                             style: GoogleFonts.outfit(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -400,19 +690,19 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
 
               // Quick Scan Demo Batches Section
               Text(
-                '⚡ Tap Batch ID to Scan In-App',
+                '⚡ ${l10n.batchId}',
                 style: GoogleFonts.outfit(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                'Tap any crop batch below to simulate scanning a physical QR code:',
+                l10n.alignCameraNotice,
                 style: GoogleFonts.inter(
                   fontSize: 13,
-                  color: AppColors.textSecondary,
+                  color: Colors.white.withValues(alpha: 0.85),
                 ),
               ),
               const SizedBox(height: 12),
@@ -420,9 +710,9 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: sampleBatches.length,
+                itemCount: displayedBatches.length,
                 itemBuilder: (context, index) {
-                  final b = sampleBatches[index];
+                  final b = displayedBatches[index];
                   return Card(
                     margin: const EdgeInsets.only(bottom: 10),
                     elevation: 1,
@@ -430,10 +720,11 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: ListTile(
+                      onTap: () => _showBatchQrModal(context, b),
                       leading: CircleAvatar(
                         backgroundColor: AppColors.mintBg,
                         child: Text(
-                          b['icon']!,
+                          b['icon'] ?? '🌿',
                           style: const TextStyle(fontSize: 20),
                         ),
                       ),
@@ -446,7 +737,7 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
                         ),
                       ),
                       subtitle: Text(
-                        'Farmer: ${b['farmer']} • Status: ${b['status']}',
+                        '${l10n.farmerLabel}: ${b['farmer']} • ${l10n.statusLabel}: ${b['status']}',
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: AppColors.textSecondary,
@@ -463,11 +754,9 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        onPressed: () => _searchBatch(
-                          'https://krishi-mitra-38a5f.web.app/trace/${b['id']}',
-                        ),
+                        onPressed: () => _showBatchQrModal(context, b),
                         child: Text(
-                          'Scan Batch',
+                          l10n.scanBatchBtn,
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -483,19 +772,20 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  const Expanded(child: Divider()),
+                  const Expanded(child: Divider(color: Colors.white38)),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
-                      'OR ENTER BATCH ID MANUALLY',
+                      l10n.manualBatchHint.toUpperCase(),
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textMuted,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),
-                  const Expanded(child: Divider()),
+                  const Expanded(child: Divider(color: Colors.white38)),
                 ],
               ),
               const SizedBox(height: 18),
@@ -503,11 +793,20 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
               // Manual Input Box
               TextField(
                 controller: _batchIdController,
+                style: GoogleFonts.outfit(
+                  color: Colors.black,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
                 decoration: InputDecoration(
-                  labelText: 'Enter Batch ID (e.g. TOM-ERD-101)',
+                  hintText: 'e.g. TOM-ERD-101',
+                  hintStyle: GoogleFonts.inter(
+                    color: Colors.black45,
+                    fontWeight: FontWeight.w500,
+                  ),
                   prefixIcon: const Icon(
                     Icons.numbers,
-                    color: AppColors.primaryGreen,
+                    color: Colors.black87,
                   ),
                   suffixIcon: IconButton(
                     icon: const Icon(

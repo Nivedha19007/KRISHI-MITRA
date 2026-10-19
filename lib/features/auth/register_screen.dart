@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/locale_provider.dart';
 import '../../core/widgets/responsive_center.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import 'login_screen.dart';
 import 'otp_verification_screen.dart';
+import 'registration_confirmation_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -24,8 +26,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _addressController = TextEditingController();
 
   String _selectedState = 'Tamil Nadu';
+
   String _selectedDistrict = 'Coimbatore';
   final _villageController = TextEditingController();
   String _selectedFarmerType = 'Organic Farmer';
@@ -73,16 +77,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _villageController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
-  // ============================================================
-  // SEND PHONE OTP FOR REGISTRATION (Farmer & Customer Phone Option)
-  // ============================================================
 
-  void _handleSendPhoneOtpRegistration() async {
+  void _handleRegistrationSubmit() async {
     final name = _nameController.text.trim();
     final phone = _phoneController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final deliveryAddress = _addressController.text.trim();
 
     if (name.isEmpty) {
       setState(() {
@@ -91,11 +96,35 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
-    if (phone.isEmpty) {
+    if (_selectedRole == UserRole.customer && deliveryAddress.isEmpty) {
       setState(() {
-        _errorMessage = 'Please enter your 10-digit mobile number.';
+        _errorMessage = 'Please enter your complete delivery address.';
       });
       return;
+    }
+
+    if (_selectedRole == UserRole.farmer || _customerMode == CustomerAuthMode.phone) {
+      if (phone.isEmpty) {
+        setState(() {
+          _errorMessage = 'Please enter your 10-digit mobile number.';
+        });
+        return;
+      }
+    }
+
+    if (_selectedRole == UserRole.customer && _customerMode == CustomerAuthMode.email) {
+      if (email.isEmpty) {
+        setState(() {
+          _errorMessage = 'Please enter your email address.';
+        });
+        return;
+      }
+      if (password.length < 6) {
+        setState(() {
+          _errorMessage = 'Password must be at least 6 characters.';
+        });
+        return;
+      }
     }
 
     setState(() {
@@ -103,128 +132,186 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _errorMessage = null;
     });
 
-    final regData = {
-      'name': name,
-      'email': _emailController.text.trim(),
-      'phone': phone,
-      'state': _selectedState,
-      'district': _selectedDistrict,
-      'village': _villageController.text.trim(),
-      'farmerType': _selectedFarmerType,
-    };
+    if (_selectedRole == UserRole.farmer || _customerMode == CustomerAuthMode.phone) {
+      try {
+        await ref.read(currentUserProvider.notifier).sendPhoneOtp(
+          phoneNumber: phone,
+          onCodeSent: (verificationId) {
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+              });
 
-    try {
-      await ref.read(currentUserProvider.notifier).sendPhoneOtp(
-            phoneNumber: phone,
-            onCodeSent: (verificationId) {
-              if (mounted) {
-                setState(() {
-                  _isLoading = false;
-                });
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => OtpVerificationScreen(
+                    phoneNumber: phone,
+                    verificationId: verificationId,
+                    role: _selectedRole,
+                    farmerName: name,
+                    isRegistration: true,
+                    registrationData: {
+                      'name': name,
+                      'phone': phone,
+                      'email': email,
+                      'password': password,
+                      'state': _selectedState,
+                      'district': _selectedDistrict,
+                      'village': _villageController.text.trim(),
+                      'deliveryAddress': deliveryAddress,
+                      'farmerType': _selectedFarmerType,
+                    },
+                  ),
+                ),
+              );
+            }
+          },
+          onVerificationFailed: (error) {
+            if (mounted) {
+              setState(() {
+                _isLoading = false;
+                _errorMessage = error.message ?? 'Failed to send OTP.';
+              });
+            }
+          },
+        );
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = e.toString().replaceAll('Exception: ', '');
+          });
+        }
+      }
+    } else {
+      try {
+        // Check if email already exists
+        final isDup = await ref.read(authRepositoryProvider).isDuplicateAccount(
+          phone: phone.isNotEmpty ? phone : null,
+          email: email.isNotEmpty ? email : null,
+        );
 
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => OtpVerificationScreen(
-                      phoneNumber: phone,
-                      verificationId: verificationId,
-                      role: _selectedRole,
-                      farmerName: name,
-                      isRegistration: true,
-                      registrationData: regData,
+        if (isDup) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                title: Text(
+                  'Account Already Exists',
+                  style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                ),
+                content: Text(
+                  'An account with email "$email" already exists. Would you like to log in via Email OTP?',
+                  style: GoogleFonts.inter(fontSize: 14),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LoginScreen(
+                            loginHint: LoginHint(
+                              role: UserRole.customer,
+                              email: email,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Log In via Email OTP',
+                      style: TextStyle(color: Colors.white),
                     ),
                   ),
-                );
-              }
-            },
-            onVerificationFailed: (error) {
-              if (mounted) {
-                setState(() {
-                  _isLoading = false;
-                  _errorMessage = error.message ?? 'Failed to send OTP to phone.';
-                });
-              }
-            },
-          );
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = e.toString().replaceAll('Exception: ', '');
-        });
+                ],
+              ),
+            );
+          }
+          return;
+        }
+
+        // New customer email registration: send Email OTP first BEFORE creating account
+        await ref.read(currentUserProvider.notifier).sendCustomerEmailOtp(
+              email: email,
+              phoneNumber: phone.isNotEmpty ? phone : '9876543210',
+              onCodeSent: (verificationId) {
+                if (mounted) {
+                  setState(() {
+                    _isLoading = false;
+                  });
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => OtpVerificationScreen(
+                        phoneNumber: phone.isNotEmpty ? phone : email,
+                        email: email,
+                        isEmailOtp: true,
+                        verificationId: verificationId,
+                        role: UserRole.customer,
+                        isRegistration: true,
+                        registrationData: {
+                          'name': name,
+                          'email': email,
+                          'phone': phone.isNotEmpty ? phone : '9876543210',
+                          'password': password,
+                          'state': _selectedState,
+                          'district': _selectedDistrict,
+                          'village': _villageController.text.trim(),
+                          'deliveryAddress': deliveryAddress,
+                          'farmerType': _selectedFarmerType,
+                        },
+                      ),
+                    ),
+                  );
+                }
+              },
+              onVerificationFailed: (error) {
+                if (mounted) {
+                  setState(() {
+                    _isLoading = false;
+                    _errorMessage = error.message ?? 'Failed to send OTP to email.';
+                  });
+                }
+              },
+            );
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = e.toString().replaceAll('Exception: ', '');
+          });
+        }
       }
     }
-  }
 
-  // ============================================================
-  // EMAIL REGISTRATION (Customer Email Option)
-  // ============================================================
-
-  void _handleEmailRegistration() async {
-    final name = _nameController.text.trim();
-    final email = _emailController.text.trim();
-    final password = _passwordController.text;
-
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
-      setState(() {
-        _errorMessage = 'Please complete all required fields.';
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      setState(() {
-        _errorMessage = 'Password must be at least 6 characters.';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      await ref.read(currentUserProvider.notifier).registerWithEmail(
-            name: name,
-            email: email,
-            password: password,
-            role: _selectedRole,
-            state: _selectedState,
-            district: _selectedDistrict,
-            village: _villageController.text.trim(),
-            farmerType: _selectedFarmerType,
-          );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              '✓ Account registered successfully! Please log in.',
-            ),
-            backgroundColor: AppColors.primaryGreen,
-          ),
-        );
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = e.toString().replaceAll('Exception: ', '');
-        });
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final districts = _districtsByState[_selectedState] ?? ['Coimbatore'];
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Create New Account',
+          l10n.createAccountTitle,
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
         ),
         backgroundColor: AppColors.primaryGreen,
@@ -240,7 +327,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Select Account Role',
+                  l10n.selectRole,
                   style: GoogleFonts.outfit(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -254,7 +341,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ButtonSegment(
                       value: UserRole.farmer,
                       label: Text(
-                        'Farmer 🌾',
+                        l10n.farmerRoleChip,
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -264,7 +351,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ButtonSegment(
                       value: UserRole.customer,
                       label: Text(
-                        'Customer 🛒',
+                        l10n.customerRoleChip,
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -338,8 +425,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       children: [
                         Text(
                           _selectedRole == UserRole.farmer
-                              ? 'Farmer Registration (Phone OTP)'
-                              : 'Customer Registration',
+                              ? '${l10n.farmer} ${l10n.register}'
+                              : '${l10n.customer} ${l10n.register}',
                           style: GoogleFonts.outfit(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -354,7 +441,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               ChoiceChip(
-                                label: const Text('Email Account'),
+                                label: Text(l10n.emailAndPasswordTab),
                                 selected:
                                     _customerMode == CustomerAuthMode.email,
                                 selectedColor: AppColors.primaryGreen,
@@ -375,7 +462,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               ),
                               const SizedBox(width: 10),
                               ChoiceChip(
-                                label: const Text('Mobile Phone OTP'),
+                                label: Text(l10n.mobileOtpTab),
                                 selected:
                                     _customerMode == CustomerAuthMode.phone,
                                 selectedColor: AppColors.primaryGreen,
@@ -402,10 +489,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         // COMMON FIELDS: Full Name
                         TextField(
                           controller: _nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Full Name *',
-                            hintText: 'Enter your full name',
-                            prefixIcon: Icon(Icons.person_outline),
+                          decoration: InputDecoration(
+                            labelText: '${l10n.name} *',
+                            hintText: l10n.farmerNameHint,
+                            prefixIcon: const Icon(Icons.person_outline),
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -417,7 +504,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             controller: _phoneController,
                             keyboardType: TextInputType.phone,
                             decoration: InputDecoration(
-                              labelText: 'Mobile Number *',
+                              labelText: '${l10n.mobileNumberLabel} *',
                               hintText: '98765 43210',
                               prefixIcon: Padding(
                                 padding: const EdgeInsets.symmetric(
@@ -444,30 +531,45 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           TextField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
-                            decoration: const InputDecoration(
-                              labelText: 'Email Address *',
+                            decoration: InputDecoration(
+                              labelText: '${l10n.email} *',
                               hintText: 'customer@gmail.com',
-                              prefixIcon: Icon(Icons.email_outlined),
+                              prefixIcon: const Icon(Icons.email_outlined),
                             ),
                           ),
                           const SizedBox(height: 14),
                           TextField(
                             controller: _passwordController,
                             obscureText: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Password (min 6 chars) *',
-                              prefixIcon: Icon(Icons.lock_outline),
+                            decoration: InputDecoration(
+                              labelText: '${l10n.password} *',
+                              prefixIcon: const Icon(Icons.lock_outline),
                             ),
                           ),
                           const SizedBox(height: 14),
                         ],
 
+                        // CUSTOMER DELIVERY ADDRESS FIELD
+                        if (_selectedRole == UserRole.customer) ...[
+                          TextField(
+                            controller: _addressController,
+                            maxLines: 2,
+                            decoration: InputDecoration(
+                              labelText: '${l10n.address} *',
+                              hintText: 'Enter complete delivery address (Door No, Street, Landmark)',
+                              prefixIcon: const Icon(Icons.home_outlined),
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+
+
                         // STATE DROPDOWN
                         DropdownButtonFormField<String>(
                           initialValue: _selectedState,
-                          decoration: const InputDecoration(
-                            labelText: 'State *',
-                            prefixIcon: Icon(Icons.map_outlined),
+                          decoration: InputDecoration(
+                            labelText: '${l10n.state} *',
+                            prefixIcon: const Icon(Icons.map_outlined),
                           ),
                           items: _indianStates.map((st) {
                             return DropdownMenuItem(
@@ -493,9 +595,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           initialValue: districts.contains(_selectedDistrict)
                               ? _selectedDistrict
                               : districts.first,
-                          decoration: const InputDecoration(
-                            labelText: 'District *',
-                            prefixIcon: Icon(Icons.location_city_outlined),
+                          decoration: InputDecoration(
+                            labelText: '${l10n.district} *',
+                            prefixIcon: const Icon(Icons.location_city_outlined),
                           ),
                           items: districts.map((dist) {
                             return DropdownMenuItem(
@@ -517,19 +619,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         if (_selectedRole == UserRole.farmer) ...[
                           TextField(
                             controller: _villageController,
-                            decoration: const InputDecoration(
-                              labelText: 'Village / Taluk',
+                            decoration: InputDecoration(
+                              labelText: l10n.village,
                               hintText: 'e.g. Gobichettipalayam',
-                              prefixIcon: Icon(Icons.home_work_outlined),
+                              prefixIcon: const Icon(Icons.home_work_outlined),
                             ),
                           ),
                           const SizedBox(height: 14),
 
                           DropdownButtonFormField<String>(
                             initialValue: _selectedFarmerType,
-                            decoration: const InputDecoration(
-                              labelText: 'Farming Speciality *',
-                              prefixIcon: Icon(Icons.eco_outlined),
+                            decoration: InputDecoration(
+                              labelText: '${l10n.farmerType} *',
+                              prefixIcon: const Icon(Icons.eco_outlined),
                             ),
                             items: _farmerTypes.map((type) {
                               return DropdownMenuItem(
@@ -558,12 +660,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 borderRadius: BorderRadius.circular(14),
                               ),
                             ),
-                            onPressed: _isLoading
-                                ? null
-                                : (_selectedRole == UserRole.farmer ||
-                                        _customerMode == CustomerAuthMode.phone
-                                    ? _handleSendPhoneOtpRegistration
-                                    : _handleEmailRegistration),
+                            onPressed: _isLoading ? null : _handleRegistrationSubmit,
                             child: _isLoading
                                 ? const SizedBox(
                                     width: 24,
@@ -574,7 +671,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                     ),
                                   )
                                 : Text(
-                                    'CREATE ACCOUNT',
+                                    l10n.createAccount.toUpperCase(),
                                     style: GoogleFonts.outfit(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,

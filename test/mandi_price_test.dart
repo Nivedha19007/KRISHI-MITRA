@@ -1,5 +1,9 @@
+import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:agriconnect/data/models/mandi_price_model.dart';
+import 'package:agriconnect/data/repositories/market_repository.dart';
 
 void main() {
   group('MandiPriceModel Tests', () {
@@ -75,6 +79,123 @@ void main() {
       expect(model.currentPricePerKg, 22.0);
       expect(model.minPrice, 22.0); // falls back to modal price per kg
       expect(model.maxPrice, 22.0); // falls back to modal price per kg
+    });
+  });
+
+  group('MarketRepository Filtering Tests', () {
+    final rawApiJson = jsonEncode({
+      'status': 'ok',
+      'records': [
+        {
+          'state': 'Tamil Nadu',
+          'district': 'Erode',
+          'market': 'Gobi',
+          'commodity': 'Tomato',
+          'variety': 'Local',
+          'modal_price': '2500'
+        },
+        {
+          'state': 'Tamil Nadu',
+          'district': 'Coimbatore',
+          'market': 'Cbe Market',
+          'commodity': 'Tomato',
+          'variety': 'Hybrid',
+          'modal_price': '2600'
+        },
+        {
+          'state': 'Maharashtra',
+          'district': 'Nashik',
+          'market': 'Lasalgaon',
+          'commodity': 'Onion',
+          'variety': 'Red',
+          'modal_price': '2100'
+        },
+      ]
+    });
+
+    test('fetchLiveMandiPrices filters strictly by state, district, and commodity', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(rawApiJson, 200);
+      });
+
+      final repo = MarketRepository(httpClient: mockClient);
+
+      // Search state: Tamil Nadu, district: Erode, commodity: Tomato
+      final results = await repo.fetchLiveMandiPrices(
+        state: 'Tamil Nadu',
+        district: 'Erode',
+        commodity: 'Tomato',
+      );
+
+      expect(results.length, 1);
+      expect(results.first.state, 'Tamil Nadu');
+      expect(results.first.district, 'Erode');
+      expect(results.first.product, 'Tomato');
+    });
+
+    test('fetchLiveMandiPrices handles state aliases and crop synonyms', () async {
+      final aliasApiJson = jsonEncode({
+        'status': 'ok',
+        'records': [
+          {
+            'state': 'Keralam',
+            'district': 'Malappuram',
+            'market': 'Chungathara VFPCK',
+            'commodity': 'Banana',
+            'variety': 'Local',
+            'modal_price': '3500'
+          },
+          {
+            'state': 'Uttar Pradesh',
+            'district': 'Mau(Maunathbhanjan)',
+            'market': 'Kopaganj APMC',
+            'commodity': 'Paddy(Common)',
+            'variety': 'Common',
+            'modal_price': '2400'
+          },
+        ]
+      });
+
+      final mockClient = MockClient((request) async {
+        return http.Response(aliasApiJson, 200);
+      });
+
+      final repo = MarketRepository(httpClient: mockClient);
+
+      // Search 'Kerala' matching 'Keralam'
+      final keralaResults = await repo.fetchLiveMandiPrices(
+        state: 'Kerala',
+        district: 'Malappuram',
+        commodity: 'Banana',
+      );
+      expect(keralaResults.length, 1);
+      expect(keralaResults.first.state, 'Keralam');
+
+      // Search 'Mau' matching 'Mau(Maunathbhanjan)' and 'Rice' matching 'Paddy(Common)'
+      final upResults = await repo.fetchLiveMandiPrices(
+        state: 'Uttar Pradesh',
+        district: 'Mau',
+        commodity: 'Rice',
+      );
+      expect(upResults.length, 1);
+      expect(upResults.first.district, 'Mau(Maunathbhanjan)');
+    });
+
+    test('fetchLiveMandiPrices returns empty list when no record matches all criteria', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(rawApiJson, 200);
+      });
+
+      final repo = MarketRepository(httpClient: mockClient);
+
+      // Search state: Tamil Nadu, district: Erode, commodity: Wheat (not present in raw records)
+      final results = await repo.fetchLiveMandiPrices(
+        state: 'Tamil Nadu',
+        district: 'Erode',
+        commodity: 'Wheat',
+      );
+
+      expect(results.isEmpty, isTrue);
     });
   });
 }

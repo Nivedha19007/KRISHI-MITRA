@@ -5,14 +5,11 @@ class AppConfig {
   /// Custom base domain for public timeline QR links.
   static String _customBaseUrl = '';
 
-  /// Optional Development PC LAN IP for physical phone testing on local Wi-Fi.
-  /// Leave empty by default so production uses public HTTPS backend.
-  static String devLanIp = '';
   static int devPort = 53604;
   static int devBackendPort = 8080;
 
   /// Default production public HTTPS backend URL.
-  static String productionBackendUrl = 'https://krishi-mitra-d6pl.onrender.com';
+  static const String productionBackendUrl = 'https://krishi-mitra-d6pl.onrender.com';
 
   /// Custom override for backend base URL if set at runtime.
   static String _customBackendBaseUrl = '';
@@ -22,8 +19,7 @@ class AppConfig {
   /// 1. Custom runtime override (_customBackendBaseUrl)
   /// 2. Build configuration parameter (--dart-define=BACKEND_BASE_URL=...)
   /// 3. Release / Production Mode (kReleaseMode): Public HTTPS backend URL
-  /// 4. Deployed Web Origin: Public HTTPS backend URL
-  /// 5. Local Development Mode (kDebugMode): Local LAN IP or localhost
+  /// 4. Local Development Mode (kDebugMode / Profile Mode): http://localhost:8080
   static String get backendBaseUrl {
     // 1. Custom runtime override
     if (_customBackendBaseUrl.trim().isNotEmpty) {
@@ -41,28 +37,8 @@ class AppConfig {
       return productionBackendUrl;
     }
 
-    // 4. Flutter Web running in browser
-    if (kIsWeb) {
-      final origin = Uri.base.origin;
-      if (origin.isNotEmpty &&
-          origin != 'null' &&
-          !origin.contains('localhost') &&
-          !origin.contains('127.0.0.1')) {
-        return productionBackendUrl;
-      }
-      return 'http://localhost:$devBackendPort';
-    }
-
-    // 5. Local mobile / desktop debug testing on LAN
-    if (devLanIp.trim().isNotEmpty) {
-      final cleanIp = devLanIp
-          .trim()
-          .replaceAll('http://', '')
-          .replaceAll('https://', '');
-      return 'http://$cleanIp:$devBackendPort';
-    }
-
-    return productionBackendUrl;
+    // 4. Default for debug mode on mobile/desktop/web: local server on port 8080
+    return 'http://localhost:$devBackendPort';
   }
 
   static set customBackendBaseUrl(String url) {
@@ -76,13 +52,6 @@ class AppConfig {
   static String get baseUrl {
     if (_customBaseUrl.trim().isNotEmpty) {
       return _customBaseUrl.trim();
-    }
-    if (devLanIp.trim().isNotEmpty) {
-      final cleanIp = devLanIp
-          .trim()
-          .replaceAll('http://', '')
-          .replaceAll('https://', '');
-      return 'http://$cleanIp:$devPort';
     }
     if (kIsWeb) {
       final origin = Uri.base.origin;

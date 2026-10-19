@@ -82,9 +82,9 @@ class MandiPriceModel {
   }
 
   factory MandiPriceModel.fromAgmarknetApi(Map<String, dynamic> map) {
-    final rawMin = _parsePrice(map['min_price'] ?? map['minPrice'] ?? map['min']);
-    final rawMax = _parsePrice(map['max_price'] ?? map['maxPrice'] ?? map['max']);
-    final rawModal = _parsePrice(map['modal_price'] ?? map['modalPrice'] ?? map['modal']);
+    final rawMin = _parsePrice(map['Min_Price'] ?? map['min_price'] ?? map['minPrice'] ?? map['min']);
+    final rawMax = _parsePrice(map['Max_Price'] ?? map['max_price'] ?? map['maxPrice'] ?? map['max']);
+    final rawModal = _parsePrice(map['Modal_Price'] ?? map['modal_price'] ?? map['modalPrice'] ?? map['modal']);
 
     // AGMARKNET mandi prices are per Quintal (100 kg). Convert to ₹/kg.
     final modalPerKg = rawModal > 0 ? (rawModal / 100.0) : 0.0;
@@ -100,7 +100,7 @@ class MandiPriceModel {
     }
 
     DateTime parsedDate = DateTime.now();
-    final rawDate = map['arrival_date'] ?? map['arrivalDate'] ?? map['date'];
+    final rawDate = map['Arrival_Date'] ?? map['arrival_date'] ?? map['arrivalDate'] ?? map['date'];
     final arrivalStr = rawDate?.toString().trim();
     if (arrivalStr != null && arrivalStr.isNotEmpty) {
       if (arrivalStr.contains('/')) {
@@ -128,19 +128,19 @@ class MandiPriceModel {
       }
     }
 
-    final marketName = (map['market'] ?? map['market_name'] ?? map['mandi'] ?? map['mandiName'] ?? 'APMC Mandi')
+    final marketName = (map['Market'] ?? map['market'] ?? map['market_name'] ?? map['mandi'] ?? map['mandiName'] ?? 'APMC Mandi')
         .toString()
         .trim();
-    final stateName = (map['state'] ?? map['state_name'] ?? map['stateName'] ?? '')
+    final stateName = (map['State'] ?? map['state'] ?? map['state_name'] ?? map['stateName'] ?? '')
         .toString()
         .trim();
-    final districtName = (map['district'] ?? map['district_name'] ?? map['districtName'] ?? '')
+    final districtName = (map['District'] ?? map['district'] ?? map['district_name'] ?? map['districtName'] ?? '')
         .toString()
         .trim();
-    final commodityName = (map['commodity'] ?? map['commodity_name'] ?? map['crop'] ?? map['product'] ?? '')
+    final commodityName = (map['Commodity'] ?? map['commodity'] ?? map['commodity_name'] ?? map['crop'] ?? map['product'] ?? '')
         .toString()
         .trim();
-    final varietyName = (map['variety'] ?? map['variety_name'] ?? map['grade'] ?? 'Standard')
+    final varietyName = (map['Variety'] ?? map['variety'] ?? map['variety_name'] ?? map['grade'] ?? 'Standard')
         .toString()
         .trim();
 

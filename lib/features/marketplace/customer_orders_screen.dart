@@ -4,9 +4,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/config/app_config.dart';
+import '../../core/localization/localized_helpers.dart';
 import '../../data/models/order_model.dart';
+import '../../data/models/quality_complaint_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/order_repository.dart';
+import '../../data/repositories/quality_complaint_repository.dart';
 import '../traceability/product_timeline_screen.dart';
 import '../traceability/public_product_timeline_screen.dart';
 
@@ -26,11 +29,12 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
     final currentUser = ref.watch(currentUserProvider);
     final ordersAsync = ref.watch(customerOrdersStreamProvider(currentUser.uid));
     final orders = ordersAsync.value ?? [];
+    final l10n = context.l10n;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'My Orders & Traceability',
+          l10n.myOrdersAndTraceability,
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: AppColors.primaryGreen,
@@ -51,19 +55,11 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'No orders placed yet',
+                      l10n.noOrdersPlaced,
                       style: GoogleFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Explore the marketplace to order fresh farm crops!',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: AppColors.textMuted,
                       ),
                     ),
                   ],
@@ -101,6 +97,7 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
   }
 
   Widget _buildCustomerOrderCard(BuildContext context, OrderModel order) {
+    final l10n = context.l10n;
     final isDelivered = order.orderStatus == 'Delivered';
 
     return Card(
@@ -116,14 +113,19 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Order #${order.id}',
-                  style: GoogleFonts.outfit(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: AppColors.textPrimary,
+                Expanded(
+                  child: Text(
+                    '${l10n.orders} #${order.id}',
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
+
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -185,14 +187,14 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
                         ),
                       ),
                       Text(
-                        'Farmer: ${order.farmerName}',
+                        '${l10n.farmer}: ${order.farmerName}',
                         style: GoogleFonts.inter(
                           fontSize: 14,
                           color: AppColors.textSecondary,
                         ),
                       ),
                       Text(
-                        '${order.quantity} ${order.unit} • ₹${order.totalAmount.toStringAsFixed(0)}',
+                        '${order.quantity} ${LocalizedHelpers.getUnitName(context, order.unit)} • ₹${order.totalAmount.toStringAsFixed(0)}',
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -232,7 +234,7 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Your Rating: ${order.rating}/5.0 — "${order.reviewText ?? "Great fresh produce!"}"',
+                          '${l10n.averageRating}: ${order.rating}/5.0 — "${order.reviewText ?? ""}"',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -250,20 +252,66 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      icon: const Icon(Icons.star_outline, size: 18),
+                      icon: const Icon(Icons.report_problem_outlined, size: 16, color: Colors.red),
                       label: Text(
-                        order.rating != null
-                            ? 'Edit Feedback'
-                            : 'Give Feedback',
+                        l10n.reportQualityIssue,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(fontSize: 12, color: Colors.red.shade700, fontWeight: FontWeight.bold),
                       ),
+                      onPressed: () => _showQualityComplaintModal(context, order),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.star_outline, size: 16),
+                      label: Text(l10n.submitReview, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.inter(fontSize: 12)),
                       onPressed: () => _showRatingModal(context, order),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.qr_code_scanner, size: 16),
+                      label: Text(l10n.productTimeline, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.inter(fontSize: 12)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                ProductTimelineScreen(batchId: order.batchId),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ] else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.report_problem_outlined, size: 16, color: Colors.red),
+                      label: Text(
+                        l10n.reportQualityIssue,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(fontSize: 12, color: Colors.red.shade700, fontWeight: FontWeight.bold),
+                      ),
+                      onPressed: () => _showQualityComplaintModal(context, order),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: ElevatedButton.icon(
-                      icon: const Icon(Icons.qr_code_scanner, size: 18),
-                      label: const Text('Crop Timeline'),
+                      icon: const Icon(Icons.timeline, size: 16),
+                      label: Text(l10n.productTimeline, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.inter(fontSize: 12)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryGreen,
                       ),
@@ -280,26 +328,6 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
                   ),
                 ],
               ),
-            ] else ...[
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.timeline, size: 18),
-                  label: const Text('View Farm Timeline QR'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            ProductTimelineScreen(batchId: order.batchId),
-                      ),
-                    );
-                  },
-                ),
-              ),
             ],
           ],
         ),
@@ -309,6 +337,7 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
 
   void _showQrModal(BuildContext context, OrderModel order) {
     final timelineUrl = AppConfig.getTimelineUrl(order.batchId);
+    final l10n = context.l10n;
 
     showDialog(
       context: context,
@@ -329,7 +358,7 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Crop QR Code',
+                        l10n.scanQr,
                         style: GoogleFonts.outfit(
                           fontWeight: FontWeight.bold,
                           fontSize: 22,
@@ -351,14 +380,14 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
                     ),
                   ),
                   Text(
-                    'Farmer: ${order.farmerName}',
+                    '${l10n.farmer}: ${order.farmerName}',
                     style: GoogleFonts.inter(
                       fontSize: 14,
                       color: AppColors.textSecondary,
                     ),
                   ),
                   Text(
-                    'Batch ID: ${order.batchId}',
+                    '${l10n.batchId}: ${order.batchId}',
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
@@ -391,15 +420,6 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
                       size: 200.0,
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    '📱 Scan with phone camera to open public web timeline',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
                   const SizedBox(height: 16),
 
                   // "View Timeline" Button
@@ -422,7 +442,7 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
                         color: Colors.white,
                       ),
                       label: Text(
-                        'View Timeline',
+                        l10n.productTimeline,
                         style: GoogleFonts.outfit(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -445,7 +465,7 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
                       );
                     },
                     icon: const Icon(Icons.timeline, size: 18),
-                    label: const Text('Open App Timeline'),
+                    label: Text(l10n.productTimeline),
                   ),
                 ],
               ),
@@ -457,6 +477,7 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
   }
 
   void _showRatingModal(BuildContext context, OrderModel order) {
+    final l10n = context.l10n;
     double currentRating = order.rating ?? 5.0;
     final reviewController = TextEditingController(
       text: order.reviewText ?? '',
@@ -483,14 +504,14 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Rate Your Produce Experience',
+                    l10n.submitReview,
                     style: GoogleFonts.outfit(
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                     ),
                   ),
                   Text(
-                    'Farmer: ${order.farmerName} • Crop: ${order.productName}',
+                    '${l10n.farmer}: ${order.farmerName} • ${l10n.crop}: ${order.productName}',
                     style: GoogleFonts.inter(
                       fontSize: 13,
                       color: AppColors.textSecondary,
@@ -524,9 +545,8 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
                   TextField(
                     controller: reviewController,
                     maxLines: 3,
-                    decoration: const InputDecoration(
-                      hintText:
-                          'Share feedback about freshness, packaging, or delivery...',
+                    decoration: InputDecoration(
+                      hintText: l10n.tagline,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -545,14 +565,168 @@ class _CustomerOrdersScreenState extends ConsumerState<CustomerOrdersScreen> {
                             );
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
+                          SnackBar(
                             content: Text(
-                              'Thank you! Your feedback has been submitted.',
+                              l10n.success,
                             ),
                           ),
                         );
                       },
-                      child: const Text('Submit Rating & Review'),
+                      child: Text(l10n.submitReview),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showQualityComplaintModal(BuildContext context, OrderModel order) {
+    final l10n = context.l10n;
+    final currentUser = ref.read(currentUserProvider);
+    String selectedIssue = 'spoiledProduce';
+    final descController = TextEditingController();
+    final photoController = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.reportQualityIssue,
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                      color: Colors.red.shade700,
+                    ),
+                  ),
+                  Text(
+                    'Order #${order.id} • ${order.productName}',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    l10n.issueType,
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedIssue,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'spoiledProduce',
+                        child: Text(l10n.spoiledProduce),
+                      ),
+                      DropdownMenuItem(
+                        value: 'poorQuality',
+                        child: Text(l10n.poorQuality),
+                      ),
+                      DropdownMenuItem(
+                        value: 'incorrectQuality',
+                        child: Text(l10n.incorrectQuality),
+                      ),
+                      DropdownMenuItem(
+                        value: 'other',
+                        child: Text(l10n.otherQualityIssue),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setModalState(() => selectedIssue = val);
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: descController,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: l10n.complaintDescription,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: photoController,
+                    decoration: InputDecoration(
+                      labelText: l10n.photoEvidence,
+                      hintText: 'https://...',
+                      prefixIcon: const Icon(Icons.photo_camera_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade700,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () async {
+                        final complaint = QualityComplaintModel(
+                          complaintId: 'cmp_${DateTime.now().millisecondsSinceEpoch}',
+                          customerId: currentUser.uid,
+                          customerName: currentUser.name.isNotEmpty ? currentUser.name : 'Customer',
+                          orderId: order.id,
+                          productId: order.productId,
+                          productName: order.productName,
+                          batchId: order.batchId,
+                          issueType: selectedIssue,
+                          description: descController.text.trim(),
+                          photoUrl: photoController.text.trim(),
+                        );
+                        await ref.read(qualityComplaintRepositoryProvider).submitComplaint(complaint);
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(l10n.complaintSubmitted),
+                              backgroundColor: AppColors.primaryGreen,
+                            ),
+                          );
+                        }
+                      },
+                      child: Text(
+                        l10n.reportQualityIssue.toUpperCase(),
+                        style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
                     ),
                   ),
                 ],

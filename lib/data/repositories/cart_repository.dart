@@ -7,7 +7,25 @@ class CartItem {
 
   CartItem({required this.product, required this.quantity});
 
-  double get totalPrice => product.pricePerUnit * quantity;
+  double get effectiveUnitPrice {
+    if (product.bulkDiscountMinQty != null &&
+        product.bulkDiscountPricePerUnit != null &&
+        product.bulkDiscountMinQty! > 0 &&
+        quantity >= product.bulkDiscountMinQty!) {
+      return product.bulkDiscountPricePerUnit!;
+    }
+    return product.pricePerUnit;
+  }
+
+  bool get isBulkDiscountApplied {
+    return effectiveUnitPrice < product.pricePerUnit;
+  }
+
+  double get totalPrice => effectiveUnitPrice * quantity;
+
+  double get normalTotalPrice => product.pricePerUnit * quantity;
+
+  double get discountAmount => normalTotalPrice - totalPrice;
 
   CartItem copyWith({ProductModel? product, double? quantity}) {
     return CartItem(

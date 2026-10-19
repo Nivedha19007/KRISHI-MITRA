@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/localized_helpers.dart';
 import '../../core/widgets/responsive_center.dart';
 import '../../data/models/product_model.dart';
 import 'farmer_timeline_edit_screen.dart';
@@ -17,6 +18,7 @@ class ProductQrScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     final batchId = (product.batchId != null && product.batchId!.isNotEmpty)
         ? product.batchId!
         : 'BATCH-${product.id}';
@@ -25,7 +27,7 @@ class ProductQrScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Product QR & Traceability',
+          l10n.bannerTitle2,
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: AppColors.primaryGreen,
@@ -54,7 +56,7 @@ class ProductQrScreen extends ConsumerWidget {
                       const Icon(Icons.qr_code_2_rounded, color: AppColors.primaryGreen, size: 20),
                       const SizedBox(width: 6),
                       Text(
-                        'Farmer Traceability QR',
+                        l10n.farmerTraceabilityQr,
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
                           color: AppColors.primaryGreen,
@@ -76,7 +78,7 @@ class ProductQrScreen extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  'Variety: ${product.variety} • ${product.district}, ${product.state}',
+                  '${l10n.variety}: ${product.variety} • ${product.district}, ${product.state}',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 14,
@@ -124,7 +126,7 @@ class ProductQrScreen extends ConsumerWidget {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          'Batch ID: $batchId',
+                          '${l10n.batchId}: $batchId',
                           style: GoogleFonts.outfit(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -150,7 +152,7 @@ class ProductQrScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Public Traceability Link:',
+                        '${l10n.publicTraceabilityLink}:',
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
@@ -174,14 +176,14 @@ class ProductQrScreen extends ConsumerWidget {
                               onPressed: () {
                                 Clipboard.setData(ClipboardData(text: traceUrl));
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Copied Public QR Trace Link!'),
+                                  SnackBar(
+                                    content: Text(l10n.copiedLinkSnackbar),
                                     backgroundColor: AppColors.primaryGreen,
                                   ),
                                 );
                               },
                               icon: const Icon(Icons.copy_rounded, size: 16),
-                              label: const Text('Copy Link'),
+                              label: Text(l10n.copyLink),
                             ),
                           ),
                         ],
@@ -215,7 +217,7 @@ class ProductQrScreen extends ConsumerWidget {
                     },
                     icon: const Icon(Icons.edit_calendar_rounded, size: 20),
                     label: Text(
-                      'EDIT PRODUCT TIMELINE & STAGES',
+                      l10n.editTimelineStages,
                       style: GoogleFonts.outfit(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
@@ -248,7 +250,7 @@ class ProductQrScreen extends ConsumerWidget {
                     },
                     icon: const Icon(Icons.preview_rounded, size: 20),
                     label: Text(
-                      'PREVIEW PUBLIC CUSTOMER PAGE',
+                      l10n.previewCustomerPage,
                       style: GoogleFonts.outfit(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,

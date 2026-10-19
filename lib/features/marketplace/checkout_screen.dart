@@ -3,13 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/localized_helpers.dart';
+import '../../core/utils/delivery_calculator.dart';
 import '../../core/widgets/responsive_center.dart';
+import '../../data/models/delivery_model.dart';
 import '../../data/models/order_model.dart';
 import '../../data/models/product_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/cart_repository.dart';
+import '../../data/repositories/delivery_repository.dart';
 import '../../data/repositories/order_repository.dart';
+import '../../data/repositories/product_repository.dart';
 import 'order_success_screen.dart';
+
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   final ProductModel? product;
@@ -37,17 +43,18 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     super.initState();
 
     final user = ref.read(currentUserProvider);
-    final initialAddr = [
-      if (user.village.trim().isNotEmpty) user.village.trim(),
-      if (user.district.trim().isNotEmpty) user.district.trim(),
-      if (user.state.trim().isNotEmpty) user.state.trim(),
-    ].join(', ');
+    final initialAddr = user.fullAddress;
 
     _addressController = TextEditingController(
       text: initialAddr.isNotEmpty
           ? initialAddr
           : 'Anna Nagar, Chennai, Tamil Nadu',
     );
+
+
+    _addressController.addListener(() {
+      if (mounted) setState(() {});
+    });
 
     _notesController = TextEditingController();
 
@@ -67,13 +74,28 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     super.dispose();
   }
 
+  DeliveryResult _computeDeliveryDetails(ProductModel product) {
+    final pickupAddress = [
+      if (product.village.isNotEmpty) product.village,
+      product.district,
+      product.state,
+    ].join(', ');
+
+    return DeliveryCalculator.calculateFromAddresses(
+      pickupAddress: pickupAddress,
+      deliveryAddress: _addressController.text,
+      pickupCoords: [product.latitude, product.longitude],
+    );
+  }
+
   void _placeCustomerOrder() async {
     final currentUser = ref.read(currentUserProvider);
+    final l10n = context.l10n;
 
     if (currentUser.uid.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please login to place an order.'),
+        SnackBar(
+          content: Text(l10n.enterMobilePrompt),
           backgroundColor: Colors.red,
         ),
       );
@@ -82,8 +104,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     if (_addressController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid delivery address.'),
+        SnackBar(
+          content: Text(l10n.state),
           backgroundColor: Colors.red,
         ),
       );
@@ -99,8 +121,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     if (targetProduct == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No product selected for order.'),
+        SnackBar(
+          content: Text(l10n.noDataFound),
           backgroundColor: Colors.red,
         ),
       );
@@ -109,8 +131,8 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     if (_orderQuantity <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Quantity must be greater than zero.'),
+        SnackBar(
+          content: Text(l10n.quantity),
           backgroundColor: Colors.red,
         ),
       );
@@ -121,20 +143,45 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       _isPlacingOrder = true;
     });
 
-    final totalAmount = _orderQuantity * targetProduct.pricePerUnit;
+    double unitPrice = targetProduct.pricePerUnit;
+    double discountSavings = 0.0;
+    if (targetProduct.bulkDiscountMinQty != null &&
+        targetProduct.bulkDiscountPricePerUnit != null &&
+        targetProduct.bulkDiscountMinQty! > 0 &&
+        _orderQuantity >= targetProduct.bulkDiscountMinQty!) {
+      unitPrice = targetProduct.bulkDiscountPricePerUnit!;
+      discountSavings = (_orderQuantity * targetProduct.pricePerUnit) - (_orderQuantity * unitPrice);
+    }
+
+    // Dynamic distance and delivery fee calculation
+    final deliveryRes = _computeDeliveryDetails(targetProduct);
+    final double distanceKm = deliveryRes.distanceKm;
+    final double deliveryCharge = deliveryRes.deliveryCharge;
+    final double productSubtotal = _orderQuantity * targetProduct.pricePerUnit;
+    final double finalTotal = (productSubtotal - discountSavings) + deliveryCharge;
     final effectiveBatchId = (targetProduct.batchId != null &&
             targetProduct.batchId!.isNotEmpty)
         ? targetProduct.batchId!
         : 'BATCH-${targetProduct.id}';
 
+    final orderId = 'ord_${DateTime.now().millisecondsSinceEpoch}';
+
+    final pickupAddressStr = [
+      if (targetProduct.village.isNotEmpty) targetProduct.village,
+      targetProduct.district,
+      targetProduct.state,
+    ].join(', ');
+
     final order = OrderModel(
-      id: 'ord_${DateTime.now().millisecondsSinceEpoch}',
+      id: orderId,
       customerId: currentUser.uid,
       customerName: currentUser.name.trim().isNotEmpty
           ? currentUser.name.trim()
           : 'Customer',
+      customerPhone: currentUser.phone,
       farmerId: targetProduct.farmerId,
       farmerName: targetProduct.farmerName,
+      farmerPhone: targetProduct.farmerMobile,
       productId: targetProduct.id,
       productName: targetProduct.name,
       productImage: targetProduct.imageUrls.isNotEmpty
@@ -143,21 +190,63 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       variety: targetProduct.variety,
       quantity: _orderQuantity,
       unit: targetProduct.unit,
-      pricePerUnit: targetProduct.pricePerUnit,
-      totalAmount: totalAmount,
+      pricePerUnit: unitPrice,
+      totalAmount: finalTotal,
+      deliveryCharge: deliveryCharge,
       paymentStatus: _paymentMethod,
       orderStatus: 'Placed',
       deliveryAddress: _addressController.text.trim(),
+      pickupAddress: pickupAddressStr,
+      distanceKm: distanceKm,
       batchId: effectiveBatchId,
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
 
     try {
+      // 1. Store order securely in Firestore with stock deduction transaction
       await ref.read(orderRepositoryProvider).placeOrder(order);
+
+      // 2. Create Delivery Request in Firebase for Delivery Partner tracking
+      final pCoords = [targetProduct.latitude, targetProduct.longitude];
+      final dCoords = DeliveryCalculator.getCoordinatesFromAddress(
+        _addressController.text,
+        fallbackCoords: pCoords,
+      );
+
+      final deliveryRequest = DeliveryModel(
+        id: 'del_$orderId',
+        orderId: orderId,
+        customerId: currentUser.uid,
+        customerName: currentUser.name.trim().isNotEmpty
+            ? currentUser.name.trim()
+            : 'Customer',
+        customerPhone: currentUser.phone,
+        farmerId: targetProduct.farmerId,
+        farmerName: targetProduct.farmerName,
+        farmerPhone: targetProduct.farmerMobile,
+        pickupLocation: pickupAddressStr,
+        pickupLatitude: pCoords[0],
+        pickupLongitude: pCoords[1],
+        deliveryAddress: _addressController.text.trim(),
+        deliveryLatitude: dCoords[0],
+        deliveryLongitude: dCoords[1],
+        distanceKm: distanceKm,
+        deliveryCharge: deliveryCharge,
+        productSubtotal: productSubtotal - discountSavings,
+        finalTotal: finalTotal,
+        deliveryStatus: 'Placed',
+        createdAt: DateTime.now(),
+      );
+
+      await ref.read(deliveryRepositoryProvider).createDeliveryRequest(deliveryRequest);
+
+      // Deduct stock in Riverpod state immediately for live UI updates across all screens
+      ref.read(productsProvider.notifier).deductStock(targetProduct.id, _orderQuantity);
 
       // Clear customer cart only after order succeeds
       ref.read(cartProvider.notifier).clearCart();
+
 
       if (mounted) {
         Navigator.pushReplacement(
@@ -179,7 +268,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               borderRadius: BorderRadius.circular(16),
             ),
             title: Text(
-              'Order Failed',
+              l10n.error,
               style: GoogleFonts.outfit(
                 fontWeight: FontWeight.bold,
                 color: Colors.red.shade700,
@@ -192,7 +281,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK'),
+                child: Text(l10n.ok),
               ),
             ],
           ),
@@ -204,6 +293,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(currentUserProvider);
+    final l10n = context.l10n;
 
     ProductModel? product;
     if (widget.product != null) {
@@ -214,18 +304,34 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     if (product == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Checkout')),
-        body: const Center(child: Text('No item to checkout.')),
+        appBar: AppBar(title: Text(l10n.buyProducts)),
+        body: Center(child: Text(l10n.noDataFound)),
       );
     }
 
-    final totalAmount = _orderQuantity * product.pricePerUnit;
+    // Compute effective price respecting bulk discount
+    final bool bulkApplied = product.bulkDiscountMinQty != null &&
+        product.bulkDiscountPricePerUnit != null &&
+        product.bulkDiscountMinQty! > 0 &&
+        _orderQuantity >= product.bulkDiscountMinQty!;
+    final double effectiveUnitPrice =
+        bulkApplied ? product.bulkDiscountPricePerUnit! : product.pricePerUnit;
+    final double productSubtotal = _orderQuantity * product.pricePerUnit;
+    final double discountSavings = bulkApplied
+        ? (_orderQuantity * (product.pricePerUnit - product.bulkDiscountPricePerUnit!))
+        : 0.0;
+
+    // Automatically calculated Distance & Delivery Fee using customer & farmer locations
+    final deliveryRes = _computeDeliveryDetails(product);
+    final double deliveryCharge = deliveryRes.deliveryCharge;
+    final double finalTotal = (productSubtotal - discountSavings) + deliveryCharge;
+    final bool isOutOfStock = product.availableStock <= 0;
     final isDesktop = MediaQuery.of(context).size.width >= 900;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Checkout & Confirm Order',
+          l10n.buyProducts,
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: AppColors.primaryGreen,
@@ -271,40 +377,109 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Variety: ${product.variety} • Category: ${product.category}',
+                          '${l10n.varietyStock}: ${product.variety} • ${l10n.category}: ${LocalizedHelpers.getCategoryName(context, product.category)}',
                           style: GoogleFonts.inter(
                             color: AppColors.textSecondary,
                             fontSize: 14,
                           ),
                         ),
                         Text(
-                          'Farmer: ${product.farmerName} (${product.district}, ${product.state})',
+                          '${l10n.farmer}: ${product.farmerName} (${product.district}, ${product.state})',
                           style: GoogleFonts.inter(
                             color: AppColors.textSecondary,
                             fontSize: 13,
                           ),
                         ),
                         const Divider(height: 24),
+                        // Out-of-stock banner
+                        if (isOutOfStock)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.red.shade300),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.inventory_2_outlined, color: Colors.red.shade700, size: 18),
+                                const SizedBox(width: 8),
+                                Text(
+                                  l10n.outOfStock,
+                                  style: GoogleFonts.inter(
+                                    color: Colors.red.shade700,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Price per Unit:',
+                              l10n.unitPrice,
                               style: GoogleFonts.inter(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
                               ),
                             ),
-                            Text(
-                              '₹${product.pricePerUnit.toStringAsFixed(0)} / ${product.unit}',
-                              style: GoogleFonts.outfit(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primaryGreen,
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                if (bulkApplied)
+                                  Text(
+                                    '₹${product.pricePerUnit.toStringAsFixed(0)} / ${LocalizedHelpers.getUnitName(context, product.unit)}',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      color: Colors.grey.shade500,
+                                      decoration: TextDecoration.lineThrough,
+                                    ),
+                                  ),
+                                Text(
+                                  '₹${effectiveUnitPrice.toStringAsFixed(0)} / ${LocalizedHelpers.getUnitName(context, product.unit)}',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: bulkApplied ? Colors.orange.shade700 : AppColors.primaryGreen,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
+                        // Bulk discount info row
+                        if (product.bulkDiscountMinQty != null &&
+                            product.bulkDiscountPricePerUnit != null &&
+                            product.bulkDiscountMinQty! > 0) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.orange.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.local_offer_outlined, color: Colors.orange.shade700, size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${l10n.bulkDiscountTitle}: ${product.bulkDiscountMinQty!.toStringAsFixed(0)}+ ${LocalizedHelpers.getUnitName(context, product.unit)} @ ₹${product.bulkDiscountPricePerUnit!.toStringAsFixed(0)}/${LocalizedHelpers.getUnitName(context, product.unit)}',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      color: Colors.orange.shade800,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -324,14 +499,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Select Order Quantity',
+                              l10n.quantity,
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
                             ),
                             Text(
-                              'Stock: ${product.availableStock} ${product.unit}',
+                              '${l10n.availableStock}: ${product.availableStock} ${LocalizedHelpers.getUnitName(context, product.unit)}',
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
@@ -366,7 +541,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                 },
                               ),
                               Text(
-                                '${_orderQuantity.toStringAsFixed(0)} ${product.unit}',
+                                '${_orderQuantity.toStringAsFixed(0)} ${LocalizedHelpers.getUnitName(context, product.unit)}',
                                 style: GoogleFonts.outfit(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
@@ -386,7 +561,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          'Maximum stock available is ${product.availableStock} ${product.unit}',
+                                          '${l10n.availableStock}: ${product.availableStock} ${LocalizedHelpers.getUnitName(context, product.unit)}',
                                         ),
                                         duration: const Duration(seconds: 2),
                                       ),
@@ -420,12 +595,14 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                             size: 20,
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            'Buyer: ${currentUser.name} (${currentUser.phone})',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: AppColors.primaryDarkGreen,
+                          Expanded(
+                            child: Text(
+                              '${l10n.customer}: ${currentUser.name} (${currentUser.phone})',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: AppColors.primaryDarkGreen,
+                              ),
                             ),
                           ),
                         ],
@@ -436,29 +613,39 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     TextFormField(
                       controller: _addressController,
                       maxLines: 2,
-                      decoration: const InputDecoration(
-                        labelText: 'Delivery Address *',
-                        prefixIcon: Icon(Icons.location_on),
+                      decoration: InputDecoration(
+                        labelText: '${l10n.address} *',
+                        prefixIcon: const Icon(Icons.location_on),
                       ),
                     ),
                     const SizedBox(height: 16),
 
                     DropdownButtonFormField<String>(
                       initialValue: _paymentMethod,
-                      decoration: const InputDecoration(
-                        labelText: 'Payment Method',
-                        prefixIcon: Icon(Icons.payment),
+                      decoration: InputDecoration(
+
+                        labelText: l10n.paymentMethod,
+                        prefixIcon: const Icon(Icons.payment),
                       ),
-                      items: const [
+                      items: [
+                        DropdownMenuItem(
+                          value: 'UPI',
+                          child: Text(l10n.paymentUpi),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Credit Card/Debit Card',
+                          child: Text(l10n.paymentCard),
+                        ),
                         DropdownMenuItem(
                           value: 'Cash on Delivery',
-                          child: Text('Cash on Delivery (Pay on Receipt)'),
+                          child: Text(l10n.paymentCod),
                         ),
                       ],
                       onChanged: (val) {
                         if (val != null) setState(() => _paymentMethod = val);
                       },
                     ),
+
                     const SizedBox(height: 20),
 
                     Card(
@@ -471,24 +658,113 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        child: Column(
                           children: [
-                            Text(
-                              'Total Amount Payable:',
-                              style: GoogleFonts.outfit(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    l10n.productSubtotal,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '₹${productSubtotal.toStringAsFixed(0)}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text(
-                              '₹${totalAmount.toStringAsFixed(0)}',
-                              style: GoogleFonts.outfit(
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.primaryGreen,
+                            if (bulkApplied) ...[
+                              const SizedBox(height: 6),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      l10n.discountSavings,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        color: Colors.orange.shade700,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '- ₹${discountSavings.toStringAsFixed(0)}',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 15,
+                                      color: Colors.orange.shade700,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
+                            ],
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    l10n.deliveryFeeLabelForKm(
+                                      deliveryRes.distanceKm.toStringAsFixed(1),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '₹${deliveryCharge.toStringAsFixed(0)}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primaryGreen,
+                                  ),
+                                ),
+                              ],
                             ),
+
+                            const Divider(height: 18),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    '${l10n.finalTotal}:',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '₹${finalTotal.toStringAsFixed(0)}',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primaryGreen,
+                                  ),
+                                ),
+                              ],
+                            ),
+
                           ],
                         ),
                       ),
@@ -499,13 +775,15 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                       height: 52,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryGreen,
+                          backgroundColor: isOutOfStock
+                              ? Colors.grey.shade400
+                              : AppColors.primaryGreen,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        onPressed: _isPlacingOrder ? null : _placeCustomerOrder,
+                        onPressed: (_isPlacingOrder || isOutOfStock) ? null : _placeCustomerOrder,
                         icon: _isPlacingOrder
                             ? const SizedBox(
                                 width: 20,
@@ -515,11 +793,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Icon(Icons.shopping_bag_rounded),
+                            : Icon(isOutOfStock ? Icons.block : Icons.shopping_bag_rounded),
                         label: Text(
-                          _isPlacingOrder
-                              ? 'PLACING ORDER...'
-                              : 'CONFIRM & PLACE ORDER',
+                          isOutOfStock
+                              ? l10n.outOfStock.toUpperCase()
+                              : (_isPlacingOrder
+                                  ? l10n.loading.toUpperCase()
+                                  : l10n.confirm.toUpperCase()),
                           style: GoogleFonts.outfit(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,

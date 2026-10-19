@@ -139,20 +139,8 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF4A148C), // Deep Purple Header
-              Color(0xFF6A1B9A),
-              Color(0xFF283593),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
+      body: SafeArea(
+        child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20.0),
               child: ResponsiveCenter(
@@ -358,7 +346,6 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 }

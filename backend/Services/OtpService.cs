@@ -21,9 +21,12 @@ public class OtpService : IOtpService
         _logger = logger;
     }
 
+
+
     public async Task<SendOtpResult> SendOtpAsync(string rawPhoneNumber, CancellationToken ct = default)
     {
         string normalizedPhone = PhoneNumberUtils.Normalize(rawPhoneNumber);
+        _logger.LogInformation("[OTP] Received OTP request for {PhoneNumber}", normalizedPhone);
 
         if (!PhoneNumberUtils.IsValidE164(normalizedPhone))
         {
@@ -71,6 +74,7 @@ public class OtpService : IOtpService
 
         // 3. Server-side Cryptographically Secure 6-digit OTP Generation
         string otpCode = RandomNumberGenerator.GetInt32(100000, 1000000).ToString("D6");
+        _logger.LogInformation("[OTP] Generated demo OTP");
 
         int requestCount = existingRecord == null || (now - existingRecord.WindowStartAt).TotalHours >= 1
             ? 1
@@ -217,6 +221,162 @@ public class OtpService : IOtpService
         {
             Success = false,
             Message = $"Invalid OTP code. {remainingAttempts} attempt(s) remaining.",
+            StatusCode = 400
+        };
+    }
+
+    public async Task<SendOtpResult> SendEmailOtpAsync(string rawEmail, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(rawEmail) || !rawEmail.Contains("@"))
+        {
+            return new SendOtpResult
+            {
+                Success = false,
+                Message = "Invalid registered email address format.",
+                StatusCode = 400
+            };
+        }
+
+        string normalizedEmail = rawEmail.Trim().ToLowerInvariant();
+        _logger.LogInformation("[EMAIL_OTP] Received Email OTP request for {Email}", normalizedEmail);
+
+        var now = DateTimeOffset.UtcNow;
+        var existingRecord = await _otpStore.GetOtpAsync(normalizedEmail, ct);
+
+        if (existingRecord != null)
+        {
+            var secondsSinceLastRequest = (now - existingRecord.LastRequestedAt).TotalSeconds;
+            if (secondsSinceLastRequest < ResendCooldownSeconds)
+            {
+                int retryAfter = ResendCooldownSeconds - (int)secondsSinceLastRequest;
+                return new SendOtpResult
+                {
+                    Success = false,
+                    Message = $"Please wait {retryAfter} seconds before requesting another OTP.",
+                    CooldownSeconds = retryAfter,
+                    StatusCode = 429
+                };
+            }
+        }
+
+        string otpCode = RandomNumberGenerator.GetInt32(100000, 1000000).ToString("D6");
+
+        var newRecord = new OtpRecord
+        {
+            PhoneNumber = normalizedEmail,
+            OtpCode = otpCode,
+            CreatedAt = now,
+            ExpiresAt = now.AddMinutes(OtpExpiryMinutes),
+            VerificationAttempts = 0,
+            LastRequestedAt = now,
+            RequestCountInWindow = 1,
+            WindowStartAt = now
+        };
+
+        await _otpStore.SaveOtpAsync(newRecord, ct);
+
+        Console.WriteLine($"\n=================================================================");
+        Console.WriteLine($"[DEMO EMAIL OTP MODE] Verification OTP for {normalizedEmail} is: {otpCode}");
+        Console.WriteLine($"=================================================================\n");
+        _logger.LogInformation("=================================================================");
+        _logger.LogInformation("[DEMO EMAIL OTP MODE] Verification OTP for {Email} is: {OtpCode}", normalizedEmail, otpCode);
+        _logger.LogInformation("=================================================================");
+
+        return new SendOtpResult
+        {
+            Success = true,
+            Message = $"OTP sent successfully to registered email: {normalizedEmail}",
+            ExpirySeconds = OtpExpiryMinutes * 60,
+            CooldownSeconds = ResendCooldownSeconds,
+            StatusCode = 200
+        };
+    }
+
+
+
+    public async Task<VerifyOtpResult> VerifyEmailOtpAsync(string rawEmail, string otpCode, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(rawEmail) || !rawEmail.Contains("@"))
+        {
+            return new VerifyOtpResult
+            {
+                Success = false,
+                Message = "Invalid email format.",
+                StatusCode = 400
+            };
+        }
+
+        if (string.IsNullOrWhiteSpace(otpCode) || otpCode.Trim().Length != 6)
+        {
+            return new VerifyOtpResult
+            {
+                Success = false,
+                Message = "OTP must be a 6-digit number.",
+                StatusCode = 400
+            };
+        }
+
+        string normalizedEmail = rawEmail.Trim().ToLowerInvariant();
+        var record = await _otpStore.GetOtpAsync(normalizedEmail, ct);
+
+        if (record == null)
+        {
+            return new VerifyOtpResult
+            {
+                Success = false,
+                Message = "No OTP request found for this email. Please request a new OTP.",
+                StatusCode = 400
+            };
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        if (now > record.ExpiresAt)
+        {
+            await _otpStore.DeleteOtpAsync(normalizedEmail, ct);
+            return new VerifyOtpResult
+            {
+                Success = false,
+                Message = "Email OTP has expired. Please request a new OTP.",
+                StatusCode = 400
+            };
+        }
+
+        if (record.VerificationAttempts >= MaxVerificationAttempts)
+        {
+            await _otpStore.DeleteOtpAsync(normalizedEmail, ct);
+            return new VerifyOtpResult
+            {
+                Success = false,
+                Message = "Maximum verification attempts exceeded. Please request a new OTP.",
+                StatusCode = 400
+            };
+        }
+
+        bool isMatch = CryptographicOperations.FixedTimeEquals(
+            System.Text.Encoding.UTF8.GetBytes(record.OtpCode),
+            System.Text.Encoding.UTF8.GetBytes(otpCode.Trim())
+        );
+
+        if (isMatch)
+        {
+            await _otpStore.DeleteOtpAsync(normalizedEmail, ct);
+            _logger.LogInformation("Email OTP successfully verified for {Email}", normalizedEmail);
+            return new VerifyOtpResult
+            {
+                Success = true,
+                Message = "Email OTP verified successfully.",
+                StatusCode = 200
+            };
+        }
+
+        record.VerificationAttempts++;
+        await _otpStore.UpdateOtpAsync(record, ct);
+
+        int remainingAttempts = MaxVerificationAttempts - record.VerificationAttempts;
+        return new VerifyOtpResult
+        {
+            Success = false,
+            Message = $"Invalid Email OTP code. {remainingAttempts} attempt(s) remaining.",
             StatusCode = 400
         };
     }

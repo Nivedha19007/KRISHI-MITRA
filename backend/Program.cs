@@ -91,11 +91,15 @@ builder.Services.AddHttpClient();
 builder.Services.AddHttpClient<IMandiService, MandiService>();
 builder.Services.AddOpenApi();
 
-// Register OTP & Firebase Services
+// Register OTP & Firebase & Delivery Services
 builder.Services.AddSingleton<IOtpStore, InMemoryOtpStore>();
 builder.Services.AddTransient<ISmsService, SmsService>();
 builder.Services.AddTransient<IOtpService, OtpService>();
 builder.Services.AddTransient<IFirebaseAuthService, FirebaseAuthService>();
+builder.Services.AddTransient<IDeliveryService, DeliveryService>();
+
+
+
 
 // Configure CORS
 var allowedOriginsEnv = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS");

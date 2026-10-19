@@ -7,6 +7,8 @@ import '../../core/constants/india_locations.dart';
 import '../../core/widgets/responsive_center.dart';
 import 'price_prediction_screen.dart';
 
+import '../../core/localization/localized_helpers.dart';
+
 class MarketScreen extends ConsumerStatefulWidget {
   const MarketScreen({super.key});
 
@@ -43,6 +45,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final liveMandiAsync = ref.watch(
       liveMandiPricesProvider(
         MandiFilterQuery(
@@ -54,7 +57,7 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Smart Mandi Prices 📊'),
+        title: Text('${l10n.mandiRates} 📊'),
         backgroundColor: AppColors.primaryGreen,
         foregroundColor: Colors.white,
       ),
@@ -83,8 +86,8 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                               child: DropdownButtonFormField<String>(
                                 initialValue: _selectedState,
                                 isExpanded: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'State',
+                                decoration: InputDecoration(
+                                  labelText: l10n.stateLabel,
                                 ),
                                 items: IndiaLocations.statesAndUTs
                                     .map(
@@ -109,14 +112,16 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                               child: DropdownButtonFormField<String>(
                                 initialValue: _selectedProduct,
                                 isExpanded: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'Crop',
+                                decoration: InputDecoration(
+                                  labelText: l10n.productLabel,
                                 ),
                                 items: _products
                                     .map(
                                       (p) => DropdownMenuItem(
                                         value: p,
-                                        child: Text(p),
+                                        child: Text(
+                                          LocalizedHelpers.getCategoryName(context, p),
+                                        ),
                                       ),
                                     )
                                     .toList(),
@@ -133,10 +138,9 @@ class _MarketScreenState extends ConsumerState<MarketScreen> {
                         DropdownButtonFormField<String>(
                           initialValue: _selectedVariety,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText:
-                                'Variety Specific (Crucial for Prediction)',
-                            prefixIcon: Icon(Icons.park),
+                          decoration: InputDecoration(
+                            labelText: l10n.variety,
+                            prefixIcon: const Icon(Icons.park),
                           ),
                           items: _varieties
                               .map(

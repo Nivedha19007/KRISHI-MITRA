@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/localized_helpers.dart';
 import '../../core/widgets/responsive_center.dart';
 import '../../core/widgets/smart_image.dart';
 import '../../data/models/product_model.dart';
+import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/product_repository.dart';
 import 'add_product_screen.dart';
@@ -18,6 +20,7 @@ class FarmerProductsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
     final allProducts = ref.watch(productsProvider);
+    final l10n = context.l10n;
 
     // Filter products belonging ONLY to the authenticated farmer
     final myProducts = allProducts
@@ -27,7 +30,7 @@ class FarmerProductsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'My Listed Products',
+          l10n.myProducts,
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: AppColors.primaryGreen,
@@ -36,7 +39,7 @@ class FarmerProductsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.add_circle_outline, size: 26),
-            tooltip: 'Add Product',
+            tooltip: l10n.sellCrop,
             onPressed: () {
               Navigator.push(
                 context,
@@ -56,6 +59,34 @@ class FarmerProductsScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (user.verificationStatus != VerificationStatus.verified) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.amber.shade400),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.pending_actions_rounded,
+                            color: Colors.amber.shade900, size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            l10n.accountVerificationPendingDesc,
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: Colors.amber.shade900,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 // Top Header Card
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -86,7 +117,7 @@ class FarmerProductsScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Product Inventory (${myProducts.length} Listed)',
+                              '${l10n.myProducts} (${myProducts.length})',
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
@@ -94,7 +125,7 @@ class FarmerProductsScreen extends ConsumerWidget {
                               ),
                             ),
                             Text(
-                              'Manage your crop listings, pricing, available stock, and marketplace publish status.',
+                              l10n.manageListings,
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
@@ -122,7 +153,7 @@ class FarmerProductsScreen extends ConsumerWidget {
                         },
                         icon: const Icon(Icons.add, size: 18),
                         label: Text(
-                          'Add Crop',
+                          l10n.sellCrop,
                           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -153,6 +184,7 @@ class FarmerProductsScreen extends ConsumerWidget {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final l10n = context.l10n;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -174,7 +206,7 @@ class FarmerProductsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'No Crops Listed Yet',
+            l10n.noActiveCrops,
             style: GoogleFonts.outfit(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -183,7 +215,7 @@ class FarmerProductsScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Start selling your farm produce directly to buyers without intermediaries.',
+            l10n.tagline,
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 14,
@@ -209,7 +241,7 @@ class FarmerProductsScreen extends ConsumerWidget {
             },
             icon: const Icon(Icons.add_circle, color: Colors.white),
             label: Text(
-              'ADD YOUR FIRST CROP',
+              l10n.listCropForSale.toUpperCase(),
               style: GoogleFonts.outfit(
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -227,6 +259,7 @@ class FarmerProductsScreen extends ConsumerWidget {
     WidgetRef ref,
     ProductModel product,
   ) {
+    final l10n = context.l10n;
     final imageUrl = product.imageUrls.isNotEmpty
         ? product.imageUrls.first
         : 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600';
@@ -319,7 +352,7 @@ class FarmerProductsScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
 
                       Text(
-                        'Variety: ${product.variety} • Category: ${product.category}',
+                        '${l10n.varietyStock}: ${product.variety} • ${l10n.category}: ${LocalizedHelpers.getCategoryName(context, product.category)}',
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: AppColors.textSecondary,
@@ -330,7 +363,7 @@ class FarmerProductsScreen extends ConsumerWidget {
                       Row(
                         children: [
                           Text(
-                            '₹${product.pricePerUnit}/${product.unit}',
+                            '₹${product.pricePerUnit}/${LocalizedHelpers.getUnitName(context, product.unit)}',
                             style: GoogleFonts.outfit(
                               fontWeight: FontWeight.bold,
                               fontSize: 17,
@@ -348,7 +381,7 @@ class FarmerProductsScreen extends ConsumerWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              'Stock: ${product.availableStock} ${product.unit}',
+                              '${l10n.availableStock}: ${product.availableStock} ${LocalizedHelpers.getUnitName(context, product.unit)}',
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
@@ -361,11 +394,23 @@ class FarmerProductsScreen extends ConsumerWidget {
                       if (product.batchId != null && product.batchId!.isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Text(
-                          'Batch ID: ${product.batchId}',
+                          '${l10n.batchId}: ${product.batchId}',
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             color: AppColors.textMuted,
                             fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      if (product.bulkDiscountMinQty != null &&
+                          product.bulkDiscountPricePerUnit != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Bulk Offer: ≥${product.bulkDiscountMinQty!.toInt()} ${product.unit} @ ₹${product.bulkDiscountPricePerUnit!.toStringAsFixed(0)}',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryDarkGreen,
                           ),
                         ),
                       ],
@@ -379,149 +424,153 @@ class FarmerProductsScreen extends ConsumerWidget {
             const SizedBox(height: 8),
 
             // Action Buttons Bar (Edit, Publish Toggle, Delete)
-            Row(
-              children: [
-                // Edit Button
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primaryGreen,
-                    side: const BorderSide(color: AppColors.primaryGreen),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                children: [
+                  // Edit Button
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primaryGreen,
+                      side: const BorderSide(color: AppColors.primaryGreen),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => AddProductScreen(
-                          productToEdit: product,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AddProductScreen(
+                            productToEdit: product,
+                          ),
                         ),
+                      );
+                    },
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: Text(
+                      l10n.edit.toUpperCase(),
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  label: Text(
-                    'EDIT',
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
+                  const SizedBox(width: 8),
 
-                // QR & Timeline Button
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGreen,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ProductQrScreen(product: product),
+                  // QR & Timeline Button
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.qr_code_2_rounded, size: 16),
-                  label: Text(
-                    'QR & TIMELINE',
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ProductQrScreen(product: product),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.qr_code_2_rounded, size: 16),
+                    label: Text(
+                      l10n.productTimeline.toUpperCase(),
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
+                  const SizedBox(width: 8),
 
-                // Publish / Unpublish Toggle Button
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: product.isPublished
-                        ? Colors.orange.shade800
-                        : AppColors.primaryGreen,
-                    side: BorderSide(
-                      color: product.isPublished
-                          ? Colors.orange.shade300
+                  // Publish / Unpublish Toggle Button
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: product.isPublished
+                          ? Colors.orange.shade800
                           : AppColors.primaryGreen,
+                      side: BorderSide(
+                        color: product.isPublished
+                            ? Colors.orange.shade300
+                            : AppColors.primaryGreen,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                  ),
-                  onPressed: () async {
-                    try {
-                      await ref
-                          .read(productsProvider.notifier)
-                          .togglePublishStatus(product);
+                    onPressed: () async {
+                      try {
+                        await ref
+                            .read(productsProvider.notifier)
+                            .togglePublishStatus(product);
 
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              product.isPublished
-                                  ? 'Product unpublished from marketplace.'
-                                  : 'Product published live to marketplace!',
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                product.isPublished
+                                    ? 'Product unpublished.'
+                                    : 'Product published live!',
+                              ),
+                              backgroundColor: product.isPublished
+                                  ? Colors.orange.shade800
+                                  : AppColors.primaryGreen,
+                              duration: const Duration(seconds: 2),
                             ),
-                            backgroundColor: product.isPublished
-                                ? Colors.orange.shade800
-                                : AppColors.primaryGreen,
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Failed to update status: $e'),
+                              backgroundColor: Colors.red.shade700,
+                            ),
+                          );
+                        }
                       }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Failed to update status: $e'),
-                            backgroundColor: Colors.red.shade700,
-                          ),
-                        );
-                      }
-                    }
-                  },
-                  icon: Icon(
-                    product.isPublished
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    size: 16,
-                  ),
-                  label: Text(
-                    product.isPublished ? 'UNPUBLISH' : 'PUBLISH',
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                    },
+                    icon: Icon(
+                      product.isPublished
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 16,
+                    ),
+                    label: Text(
+                      product.isPublished ? l10n.cancel.toUpperCase() : l10n.confirm.toUpperCase(),
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
-                ),
 
-                const Spacer(),
+                  const SizedBox(width: 8),
 
-                // Delete Button
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  tooltip: 'Delete Product',
-                  onPressed: () => _confirmDelete(context, ref, product),
-                ),
-              ],
+                  // Delete Button
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    tooltip: l10n.delete,
+                    onPressed: () => _confirmDelete(context, ref, product),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -534,22 +583,23 @@ class FarmerProductsScreen extends ConsumerWidget {
     WidgetRef ref,
     ProductModel product,
   ) {
+    final l10n = context.l10n;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          'Delete Crop Listing?',
+          '${l10n.delete} ${l10n.crop}?',
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
         ),
         content: Text(
-          'Are you sure you want to permanently remove "${product.name}" from your listings and the marketplace?',
+          '${l10n.confirmLogout} (${product.name})',
           style: GoogleFonts.inter(fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('CANCEL'),
+            child: Text(l10n.cancel.toUpperCase()),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -568,7 +618,7 @@ class FarmerProductsScreen extends ConsumerWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Crop "${product.name}" deleted.'),
+                      content: Text('"${product.name}" ${l10n.delete}.'),
                       backgroundColor: Colors.red.shade700,
                       duration: const Duration(seconds: 2),
                     ),
@@ -578,7 +628,7 @@ class FarmerProductsScreen extends ConsumerWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Deletion failed: $e'),
+                      content: Text('${l10n.error}: $e'),
                       backgroundColor: Colors.red.shade700,
                     ),
                   );
@@ -586,7 +636,7 @@ class FarmerProductsScreen extends ConsumerWidget {
               }
             },
             child: Text(
-              'DELETE',
+              l10n.delete.toUpperCase(),
               style: GoogleFonts.outfit(
                 fontWeight: FontWeight.bold,
                 color: Colors.white,

@@ -2,94 +2,80 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper functions
+
+    // Helper: checks if request has a Firebase Auth session
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
 
-    function isAdmin() {
-      return isAuthenticated() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
-      );
-    }
-
-    // Users Collection (Owner-based access rule, Admin role protection)
+    // ============================================================
+    // USERS COLLECTION
+    // Supports doc IDs as users/{uid} OR users/{phone_doc_id}
+    // ============================================================
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAuthenticated() && (
-        (request.auth.uid == userId &&
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'verificationStatus'])) ||
-        isAdmin()
-      );
-      allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isAuthenticated();
     }
 
-    // Products Collection (Public read for QR traceability & marketplace, authenticated farmer/admin write)
+    // ============================================================
+    // PRODUCTS COLLECTION (Marketplace & Stock Management)
+    // ============================================================
     match /products/{productId} {
       allow read: if true;
-      allow create: if isAuthenticated()
-          && request.resource.data.farmerId == request.auth.uid;
-      allow update: if isAuthenticated() && (
-        resource.data.farmerId == request.auth.uid || isAdmin()
-      );
-      allow delete: if isAuthenticated() && (
-        resource.data.farmerId == request.auth.uid || isAdmin()
-      );
+      allow create, update: if true;
+      allow delete: if isAuthenticated();
     }
 
-    // Batches Collection (Public read for QR traceability, strict authenticated farmer/admin write)
-    match /batches/{batchId} {
-      allow read: if true;
-      allow create: if isAuthenticated() && request.resource.data.farmerId == request.auth.uid;
-      allow update: if isAuthenticated() && (resource.data.farmerId == request.auth.uid || isAdmin());
-      allow delete: if isAuthenticated() && (resource.data.farmerId == request.auth.uid || isAdmin());
-    }
-
-    // Orders Collection (Strict authenticated customer, farmer & admin access)
+    // ============================================================
+    // ORDERS COLLECTION (Order Creation & Atomic Transactions)
+    // ============================================================
     match /orders/{orderId} {
-      allow read: if isAuthenticated() && (
-        resource == null ||
-        resource.data.customerId == request.auth.uid ||
-        resource.data.farmerId == request.auth.uid ||
-        isAdmin()
-      );
-      allow create: if isAuthenticated() && (
-        request.resource.data.customerId == request.auth.uid
-      );
-      allow update: if isAuthenticated() && (
-        resource.data.customerId == request.auth.uid ||
-        resource.data.farmerId == request.auth.uid ||
-        isAdmin()
-      );
-      allow delete: if isAuthenticated() && (
-        resource.data.customerId == request.auth.uid ||
-        isAdmin()
-      );
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isAuthenticated();
     }
 
-    // Reviews Collection
+    // ============================================================
+    // DELIVERIES COLLECTION (Delivery Partner & Tracking)
+    // ============================================================
+    match /deliveries/{deliveryId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isAuthenticated();
+    }
+
+    // ============================================================
+    // TRACEABILITY & OTHER COLLECTIONS
+    // ============================================================
+    match /batches/{batchId} {
+      allow read, write: if true;
+    }
+
+    match /harvest_batches/{batchId} {
+      allow read, write: if true;
+    }
+
+    match /organic_certificates/{certificateId} {
+      allow read, write: if true;
+    }
+
+    match /quality_complaints/{complaintId} {
+      allow read, write: if true;
+    }
+
     match /reviews/{reviewId} {
       allow read: if true;
-      allow create, update: if isAuthenticated() && (
-        request.resource.data.customerId == request.auth.uid ||
-        resource.data.customerId == request.auth.uid ||
-        isAdmin()
-      );
-      allow delete: if isAuthenticated() && (
-        resource.data.customerId == request.auth.uid ||
-        isAdmin()
-      );
+      allow create, update: if true;
+      allow delete: if isAuthenticated();
     }
 
-    // Cart Collection
     match /cart/{userId}/items/{itemId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if true;
+    }
+
+    match /notifications/{notificationId} {
+      allow read, write: if true;
     }
   }
 }

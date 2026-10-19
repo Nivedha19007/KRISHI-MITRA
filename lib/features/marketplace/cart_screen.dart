@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/localized_helpers.dart';
 import '../../data/repositories/cart_repository.dart';
 import 'checkout_screen.dart';
 
@@ -15,11 +16,12 @@ class CartScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cartItems = ref.watch(cartProvider);
     final cartNotifier = ref.read(cartProvider.notifier);
+    final l10n = context.l10n;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'My Shopping Cart',
+          l10n.buyProducts,
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: AppColors.primaryGreen,
@@ -34,7 +36,7 @@ class CartScreen extends ConsumerWidget {
                 size: 20,
               ),
               label: Text(
-                'Clear',
+                l10n.delete,
                 style: GoogleFonts.inter(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -58,19 +60,11 @@ class CartScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Your cart is empty',
+                      l10n.noOrdersPlaced,
                       style: GoogleFonts.outfit(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Browse farm fresh produce directly from farmers!',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -122,21 +116,53 @@ class CartScreen extends ConsumerWidget {
                                         ),
                                       ),
                                       Text(
-                                        'Farmer: ${product.farmerName}',
+                                        '${l10n.farmer}: ${product.farmerName}',
                                         style: GoogleFonts.inter(
                                           fontSize: 14,
                                           color: AppColors.textSecondary,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(
-                                        '₹${product.pricePerUnit}/${product.unit}',
-                                        style: GoogleFonts.outfit(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 18,
-                                          color: AppColors.primaryGreen,
+                                      if (item.isBulkDiscountApplied) ...[
+                                        Row(
+                                          children: [
+                                            Text(
+                                              '₹${item.effectiveUnitPrice.toStringAsFixed(0)}',
+                                              style: GoogleFonts.outfit(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 18,
+                                                color: AppColors.primaryGreen,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              '₹${product.pricePerUnit.toStringAsFixed(0)}',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 13,
+                                                decoration: TextDecoration.lineThrough,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
+                                        Text(
+                                          '🏷️ Bulk Discount Applied (Saved ₹${item.discountAmount.toStringAsFixed(0)})',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.primaryGreen,
+                                          ),
+                                        ),
+                                      ] else ...[
+                                        Text(
+                                          '₹${product.pricePerUnit}/${LocalizedHelpers.getUnitName(context, product.unit)}',
+                                          style: GoogleFonts.outfit(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                            color: AppColors.primaryGreen,
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -163,15 +189,18 @@ class CartScreen extends ConsumerWidget {
                                       ),
                                     ),
                                     IconButton(
-                                      icon: const Icon(
+                                      icon: Icon(
                                         Icons.add_circle_outline,
-                                        color: AppColors.primaryGreen,
+                                        color: item.quantity >= product.availableStock
+                                            ? Colors.grey
+                                            : AppColors.primaryGreen,
                                       ),
-                                      onPressed: () =>
-                                          cartNotifier.updateQuantity(
-                                            product.id,
-                                            item.quantity + 1,
-                                          ),
+                                      onPressed: item.quantity >= product.availableStock
+                                          ? null
+                                          : () => cartNotifier.updateQuantity(
+                                                product.id,
+                                                item.quantity + 1,
+                                              ),
                                     ),
                                   ],
                                 ),
@@ -205,7 +234,7 @@ class CartScreen extends ConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Total Amount (${cartNotifier.itemCount} items)',
+                              '${l10n.totalPrice} (${cartNotifier.itemCount})',
                               style: GoogleFonts.inter(
                                 fontSize: 17,
                                 color: AppColors.textSecondary,
@@ -246,10 +275,11 @@ class CartScreen extends ConsumerWidget {
                               }
                             },
                             child: Text(
-                              'Proceed to Checkout',
+                              l10n.buyProducts,
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 18,
+                                color: Colors.white,
                               ),
                             ),
                           ),

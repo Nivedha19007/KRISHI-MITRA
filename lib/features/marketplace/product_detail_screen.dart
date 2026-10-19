@@ -11,6 +11,7 @@ import 'checkout_screen.dart';
 import '../traceability/product_timeline_screen.dart';
 import '../traceability/public_product_timeline_screen.dart';
 
+import '../../core/localization/localized_helpers.dart';
 import '../../core/widgets/responsive_center.dart';
 import '../../core/widgets/smart_image.dart';
 
@@ -21,6 +22,7 @@ class ProductDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     final allProducts = ref.watch(productsProvider);
     final liveProduct = allProducts.firstWhere(
       (p) => p.id == product.id,
@@ -126,7 +128,7 @@ class ProductDetailScreen extends ConsumerWidget {
                             style: GoogleFonts.outfit(
                               fontSize: 30,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
+                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -143,13 +145,14 @@ class ProductDetailScreen extends ConsumerWidget {
                               style: GoogleFonts.inter(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
                             ),
                             Text(
                               ' (${product.reviewCount})',
                               style: GoogleFonts.inter(
                                 fontSize: 15,
-                                color: AppColors.textSecondary,
+                                color: Colors.white70,
                               ),
                             ),
                           ],
@@ -157,11 +160,11 @@ class ProductDetailScreen extends ConsumerWidget {
                       ],
                     ),
                     Text(
-                      'Variety: ${product.variety} • Category: ${product.category}',
+                      '${l10n.variety}: ${product.variety} • ${l10n.categoryLabel}: ${LocalizedHelpers.getCategoryName(context, product.category)}',
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primaryGreen,
+                        color: Colors.white.withValues(alpha: 0.90),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -179,49 +182,106 @@ class ProductDetailScreen extends ConsumerWidget {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Direct Farmer Price',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  color: AppColors.textSecondary,
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Direct Farmer Price',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                '₹${product.pricePerUnit.toStringAsFixed(0)} / ${product.unit}',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primaryGreen,
+                                Text(
+                                  '₹${product.pricePerUnit.toStringAsFixed(0)} / ${product.unit}',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primaryGreen,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                'Available Stock',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  color: AppColors.textSecondary,
+                          const SizedBox(width: 12),
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  'Available Stock',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                '${product.availableStock.toInt()} ${product.unit}',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
+                                Text(
+                                  product.availableStock <= 0
+                                      ? 'OUT OF STOCK'
+                                      : '${product.availableStock.toInt()} ${product.unit}',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.outfit(
+                                    fontSize: product.availableStock <= 0 ? 16 : 22,
+                                    fontWeight: FontWeight.bold,
+                                    color: product.availableStock <= 0
+                                        ? Colors.red.shade700
+                                        : AppColors.textPrimary,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
+
                     ),
+                    if (product.bulkDiscountMinQty != null &&
+                        product.bulkDiscountMinQty! > 0 &&
+                        product.bulkDiscountPricePerUnit != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.mintBg,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppColors.primaryGreen),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.local_offer_rounded,
+                              color: AppColors.primaryGreen,
+                              size: 26,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Bulk Discount Available!',
+                                    style: GoogleFonts.outfit(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: AppColors.primaryGreen,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Buy ${product.bulkDiscountMinQty!.toInt()} ${product.unit} or more at ₹${product.bulkDiscountPricePerUnit!.toStringAsFixed(0)} / ${product.unit}',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 18),
 
                     // Farmer Information & Location Card
@@ -285,7 +345,7 @@ class ProductDetailScreen extends ConsumerWidget {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Farm Location:',
+                                        '${l10n.locationLabel}:',
                                         style: GoogleFonts.inter(
                                           fontSize: 13,
                                           color: AppColors.textSecondary,
@@ -314,7 +374,7 @@ class ProductDetailScreen extends ConsumerWidget {
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
-                                  'Harvest Date: ${product.harvestDate.toString().split(' ').first}',
+                                  '${l10n.harvestDate}: ${product.harvestDate.toString().split(' ').first}',
                                   style: GoogleFonts.inter(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
@@ -328,13 +388,14 @@ class ProductDetailScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 18),
 
-                    // Verified Certificates Badge Row (Requirement #15)
+
+                    // Verified Certificates Badge Row
                     Text(
                       'Verified Badges & Certificates',
                       style: GoogleFonts.outfit(
                         fontWeight: FontWeight.bold,
                         fontSize: 20,
-                        color: AppColors.textPrimary,
+                        color: Colors.white,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -342,18 +403,20 @@ class ProductDetailScreen extends ConsumerWidget {
                       spacing: 8,
                       runSpacing: 8,
                       children: [
-                        _buildCertificateBadge(
-                          context,
-                          '✓ Verified Farmer',
-                          AppColors.verifiedBg,
-                          AppColors.verifiedGreen,
-                        ),
-                        _buildCertificateBadge(
-                          context,
-                          '🌱 Organic Certified',
-                          AppColors.organicBg,
-                          AppColors.organicTag,
-                        ),
+                        if (product.isVerifiedFarmer)
+                          _buildCertificateBadge(
+                            context,
+                            '✓ ${l10n.verifiedFarmer}',
+                            AppColors.verifiedBg,
+                            AppColors.verifiedGreen,
+                          ),
+                        if (product.isOrganicVerified)
+                          _buildCertificateBadge(
+                            context,
+                            '🌱 ${l10n.organicCertified}',
+                            AppColors.organicBg,
+                            AppColors.organicTag,
+                          ),
                         _buildCertificateBadge(
                           context,
                           '🏛️ FPO Direct Produce',
@@ -362,7 +425,7 @@ class ProductDetailScreen extends ConsumerWidget {
                         ),
                         _buildCertificateBadge(
                           context,
-                          '🧪 Quality Checked',
+                          '🧪 ${l10n.qualityVerified}',
                           Colors.purple.shade50,
                           Colors.purple.shade700,
                         ),
@@ -441,21 +504,46 @@ class ProductDetailScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 20),
 
-                    // Crop Description
-                    Text(
-                      'Description',
-                      style: GoogleFonts.outfit(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 22,
+                    // Crop Description (Half-white frosted container for high visibility)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.40),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.10),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      product.description,
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        height: 1.5,
-                        color: AppColors.textSecondary,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Description',
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              color: const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            product.description,
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              height: 1.5,
+                              color: const Color(0xFF334155),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 30),
@@ -485,45 +573,51 @@ class ProductDetailScreen extends ConsumerWidget {
             Expanded(
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.add_shopping_cart, size: 20),
-                label: const Text('Add to Cart'),
+                label: Text(product.availableStock <= 0 ? 'Out of Stock' : 'Add to Cart'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                onPressed: () {
-                  ref.read(cartProvider.notifier).addToCart(product, 1);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Added "${product.name}" to cart!'),
-                      backgroundColor: AppColors.primaryGreen,
-                    ),
-                  );
-                },
+                onPressed: product.availableStock <= 0
+                    ? null
+                    : () {
+                        ref.read(cartProvider.notifier).addToCart(product, 1);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Added "${product.name}" to cart!'),
+                            backgroundColor: AppColors.primaryGreen,
+                          ),
+                        );
+                      },
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen,
+                  backgroundColor: product.availableStock <= 0
+                      ? Colors.grey
+                      : AppColors.primaryGreen,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                onPressed: () {
-                  ref.read(cartProvider.notifier).addToCart(product, 1);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CheckoutScreen(product: product),
-                    ),
-                  );
-                },
+                onPressed: product.availableStock <= 0
+                    ? null
+                    : () {
+                        ref.read(cartProvider.notifier).addToCart(product, 1);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CheckoutScreen(product: product),
+                          ),
+                        );
+                      },
                 child: Text(
-                  'Buy Now',
+                  product.availableStock <= 0 ? 'Out of Stock' : 'Buy Now',
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,

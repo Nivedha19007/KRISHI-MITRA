@@ -87,6 +87,9 @@ public class SmsService : ISmsService
         }
 
         // Default: DEMO Mode
+        Console.WriteLine($"\n=================================================================");
+        Console.WriteLine($"[DEMO OTP MODE] Verification OTP for {phoneNumber} is: {otpCode}");
+        Console.WriteLine($"=================================================================\n");
         _logger.LogInformation("=================================================================");
         _logger.LogInformation("[DEMO OTP MODE] Verification OTP for {PhoneNumber} is: {OtpCode}", phoneNumber, otpCode);
         _logger.LogInformation("=================================================================");

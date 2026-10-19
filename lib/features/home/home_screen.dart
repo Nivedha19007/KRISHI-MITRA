@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/localized_helpers.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/cart_repository.dart';
 import '../../data/repositories/product_repository.dart';
@@ -28,26 +29,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Timer? _bannerTimer;
   final TextEditingController _searchController = TextEditingController();
 
-  final List<Map<String, String>> _banners = [
-    {
-      'title': 'Farm Fresh Crops',
-      'subtitle':
-          'Directly from verified Indian farmers at zero commission markup',
-      'color': '0xFF166534',
-    },
-    {
-      'title': 'Traceability via QR Code',
-      'subtitle': 'Scan produce QR to view crop timeline from seed to doorstep',
-      'color': '0xFF15803D',
-    },
-    {
-      'title': '100% Organic & FPO Certified',
-      'subtitle':
-          'Verified heirloom crops harvested cleanly with zero chemicals',
-      'color': '0xFFD97706',
-    },
-  ];
-
   final List<Map<String, dynamic>> _categories = [
     {'name': 'Vegetables', 'icon': Icons.eco, 'color': AppColors.primaryGreen},
     {'name': 'Fruits', 'icon': Icons.apple, 'color': Colors.redAccent},
@@ -70,7 +51,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     _bannerTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
       if (_bannerController.hasClients) {
-        final next = (_currentBannerIndex + 1) % _banners.length;
+        final next = (_currentBannerIndex + 1) % 3;
         _bannerController.animateToPage(
           next,
           duration: const Duration(milliseconds: 600),
@@ -93,9 +74,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final user = ref.watch(currentUserProvider);
     final products = ref.watch(productsProvider);
     final cartItems = ref.watch(cartProvider);
+    final l10n = context.l10n;
+
+    final banners = [
+      {
+        'title': l10n.bannerTitle1,
+        'subtitle': l10n.bannerSubtitle1,
+        'color': '0xFF166534',
+      },
+      {
+        'title': l10n.bannerTitle2,
+        'subtitle': l10n.bannerSubtitle2,
+        'color': '0xFF15803D',
+      },
+      {
+        'title': l10n.bannerTitle3,
+        'subtitle': l10n.bannerSubtitle3,
+        'color': '0xFFD97706',
+      },
+    ];
 
     return Scaffold(
-      backgroundColor: AppColors.lightBg,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: ResponsiveCenter(
           maxWidth: 1400,
@@ -104,10 +104,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. TOP HEADER & LOCATION BAR
+                // 1. TOP HEADER & LOCATION BAR (Half-white frosted container)
                 Container(
+                  margin: const EdgeInsets.fromLTRB(16, 8, 16, 6),
                   padding: const EdgeInsets.all(16.0),
-                  color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.90),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.40),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.10),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
                   child: Column(
                     children: [
                       Row(
@@ -132,7 +147,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 Row(
                                   children: [
                                     Text(
-                                      'Delivering to ',
+                                      '${l10n.deliveringTo} ',
                                       style: GoogleFonts.inter(
                                         fontSize: 13,
                                         color: AppColors.textSecondary,
@@ -149,7 +164,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ],
                                 ),
                                 Text(
-                                  'KRISHI MITRA Marketplace 🌾',
+                                  l10n.marketplaceTitle,
                                   style: GoogleFonts.outfit(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -219,8 +234,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           );
                         },
                         decoration: InputDecoration(
-                          hintText:
-                              'Search crops, farmers, districts, state...',
+                          hintText: l10n.searchPlaceholder,
                           prefixIcon: const Icon(
                             Icons.search,
                             color: AppColors.primaryGreen,
@@ -253,9 +267,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     controller: _bannerController,
                     onPageChanged: (idx) =>
                         setState(() => _currentBannerIndex = idx),
-                    itemCount: _banners.length,
+                    itemCount: banners.length,
                     itemBuilder: (context, index) {
-                      final b = _banners[index];
+                      final b = banners[index];
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: Container(
@@ -302,7 +316,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(
-                    _banners.length,
+                    banners.length,
                     (idx) => AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -337,13 +351,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: AppColors.mintBg,
+                            color: Colors.white.withValues(alpha: 0.90),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: AppColors.primaryGreen.withValues(
-                                alpha: 0.3,
+                              color: Colors.white.withValues(
+                                alpha: 0.4,
                               ),
                             ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.08),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
                           child: Row(
                             children: [
@@ -360,7 +381,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      '📍 Nearby Farmers & Local Crops',
+                                      l10n.nearbyFarmersBannerTitle,
                                       style: GoogleFonts.outfit(
                                         fontWeight: FontWeight.bold,
                                         fontSize: 18,
@@ -368,7 +389,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       ),
                                     ),
                                     Text(
-                                      'Filter available crops by distance radius (5 km, 10 km, 20 km)',
+                                      l10n.nearbyFarmersBannerSubtitle,
                                       style: GoogleFonts.inter(
                                         fontSize: 13,
                                         color: AppColors.textSecondary,
@@ -392,7 +413,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           _buildQuickTile(
-                            'Browse Market',
+                            l10n.browseMarket,
                             Icons.storefront,
                             AppColors.primaryGreen,
                             () {
@@ -405,7 +426,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             },
                           ),
                           _buildQuickTile(
-                            'Nearby Farmers',
+                            l10n.nearbyFarmers,
                             Icons.near_me,
                             Colors.blue.shade700,
                             () {
@@ -418,7 +439,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             },
                           ),
                           _buildQuickTile(
-                            'Mandi Rates',
+                            l10n.mandiRates,
                             Icons.insights,
                             AppColors.accentGold,
                             () {
@@ -431,7 +452,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             },
                           ),
                           _buildQuickTile(
-                            'Scan QR',
+                            l10n.scanQr,
                             Icons.qr_code_scanner,
                             AppColors.leafGreen,
                             () {
@@ -450,15 +471,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // 4. CATEGORIES SECTION
+                // 4. CATEGORIES SECTION (Standalone Title in White)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: Text(
-                    'Browse Categories',
+                    l10n.browseCategories,
                     style: GoogleFonts.outfit(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          blurRadius: 6,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -486,8 +514,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 26,
-                                backgroundColor: (cat['color'] as Color)
-                                    .withValues(alpha: 0.12),
+                                backgroundColor: Colors.white.withValues(alpha: 0.88),
                                 child: Icon(
                                   cat['icon'] as IconData,
                                   color: cat['color'] as Color,
@@ -496,14 +523,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                cat['name'] as String,
+                                LocalizedHelpers.getCategoryName(
+                                  context,
+                                  cat['name'] as String,
+                                ),
                                 textAlign: TextAlign.center,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
                                   fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
+                                  color: Colors.white,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black.withValues(alpha: 0.6),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -515,20 +552,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 const SizedBox(height: 20),
 
-                // 5. FRESH PRODUCE MARKETPLACE LIST
+                // 5. FRESH PRODUCE MARKETPLACE LIST (Standalone Header in White)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Fresh Farm Harvests',
-                        style: GoogleFonts.outfit(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
+                      Expanded(
+                        child: Text(
+                          l10n.freshFarmHarvests,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.outfit(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.6),
+                                blurRadius: 6,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       TextButton(
                         onPressed: () {
                           Navigator.push(
@@ -539,11 +587,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           );
                         },
                         child: Text(
-                          'View All',
+                          l10n.viewAll,
                           style: GoogleFonts.inter(
                             fontSize: 15,
-                            color: AppColors.primaryGreen,
+                            color: const Color(0xFF86EFAC),
                             fontWeight: FontWeight.bold,
+                            shadows: [
+                              Shadow(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -563,8 +618,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     return Card(
                       margin: const EdgeInsets.only(bottom: 14),
                       elevation: 2,
+                      color: Colors.white.withValues(alpha: 0.92),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.35),
+                          width: 1,
+                        ),
                       ),
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
@@ -633,7 +693,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                   BorderRadius.circular(8),
                                             ),
                                             child: Text(
-                                              '✓ Verified',
+                                              '✓ ${l10n.verifiedFarmer}',
                                               style: GoogleFonts.inter(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.bold,
@@ -645,7 +705,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      'Farmer: ${p.farmerName} • ${p.district}, ${p.state}',
+                                      '${l10n.farmer}: ${p.farmerName} • ${p.district}, ${p.state}',
                                       style: GoogleFonts.inter(
                                         fontSize: 14,
                                         color: AppColors.textSecondary,
@@ -683,7 +743,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                   BorderRadius.circular(6),
                                             ),
                                             child: Text(
-                                              '🌱 Organic',
+                                              '🌱 ${l10n.organicCertified}',
                                               style: GoogleFonts.inter(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.bold,
@@ -700,7 +760,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
-                                          '₹${p.pricePerUnit.toStringAsFixed(0)} / ${p.unit}',
+                                          '₹${p.pricePerUnit.toStringAsFixed(0)} / ${LocalizedHelpers.getUnitName(context, p.unit)}',
                                           style: GoogleFonts.outfit(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 18,
@@ -729,7 +789,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                             ).showSnackBar(
                                               SnackBar(
                                                 content: Text(
-                                                  'Added "${p.name}" to cart!',
+                                                  l10n.addedToCartSnackbar,
                                                 ),
                                                 backgroundColor:
                                                     AppColors.primaryGreen,
@@ -740,7 +800,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                             );
                                           },
                                           child: Text(
-                                            'Add',
+                                            l10n.addToCart,
                                             style: GoogleFonts.inter(
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold,
@@ -780,12 +840,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 4),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Colors.white.withValues(alpha: 0.90),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.borderLight),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.40)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
+                color: Colors.black.withValues(alpha: 0.06),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),

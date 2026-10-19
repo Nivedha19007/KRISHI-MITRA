@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/services/weather_service.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/locale_provider.dart';
 
 import '../../core/widgets/responsive_center.dart';
 
@@ -35,8 +36,10 @@ class _AdvisoryScreenState extends State<AdvisoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Agricultural Advisory & Weather')),
+      appBar: AppBar(title: Text(l10n.advisoryTitle)),
       body: ResponsiveCenter(
         maxWidth: 1000,
         child: SingleChildScrollView(
@@ -118,9 +121,9 @@ class _AdvisoryScreenState extends State<AdvisoryScreen> {
                 ),
               const SizedBox(height: 20),
 
-              const Text(
-                'Seasonal Advisory Reminders',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              Text(
+                l10n.advisoryTitle,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
 

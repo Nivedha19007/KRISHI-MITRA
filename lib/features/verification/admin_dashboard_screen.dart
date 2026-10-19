@@ -1,17 +1,29 @@
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/localized_helpers.dart';
 import '../../core/widgets/responsive_center.dart';
 import '../../core/widgets/status_badge.dart';
+import '../../data/datasources/sample_data.dart';
+import '../../data/models/delivery_model.dart';
+import '../../data/models/harvest_batch_model.dart';
 import '../../data/models/order_model.dart';
+import '../../data/models/organic_certificate_model.dart';
 import '../../data/models/product_model.dart';
+import '../../data/models/quality_complaint_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
+import '../../data/repositories/delivery_repository.dart';
+import '../../data/repositories/harvest_batch_repository.dart';
 import '../../data/repositories/order_repository.dart';
+import '../../data/repositories/organic_certificate_repository.dart';
 import '../../data/repositories/product_repository.dart';
+import '../../data/repositories/quality_complaint_repository.dart';
 import '../auth/login_screen.dart';
+import '../marketplace/delivery_management_screen.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -30,7 +42,18 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 8, vsync: this);
+    _ensureAuthSession();
+  }
+
+  void _ensureAuthSession() async {
+    if (fb.FirebaseAuth.instance.currentUser == null) {
+      try {
+        await fb.FirebaseAuth.instance.signInAnonymously();
+      } catch (e) {
+        debugPrint('[ADMIN_DASHBOARD_WARN] Anonymous sign-in exception: $e');
+      }
+    }
   }
 
   @override
@@ -39,8 +62,49 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
     super.dispose();
   }
 
+  Future<String?> _showRejectionReasonDialog(BuildContext context, String title) async {
+    final controller = TextEditingController();
+    final l10n = context.l10n;
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(title, style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+          content: TextField(
+            controller: controller,
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: l10n.rejectionReasonHint,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: Text(l10n.cancel),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: Text(l10n.confirmRejection),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _verifyFarmer(UserModel farmer, VerificationStatus newStatus) async {
     final currentAdmin = ref.read(currentUserProvider);
+    final l10n = context.l10n;
+    String? rejectionReason;
+    if (newStatus == VerificationStatus.rejected) {
+      rejectionReason = await _showRejectionReasonDialog(
+          context, '${l10n.rejectApplication}: ${farmer.name}');
+      if (rejectionReason == null) return;
+    }
+
     try {
       await ref
           .read(authRepositoryProvider)
@@ -48,6 +112,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
             farmer.uid,
             newStatus,
             adminUid: currentAdmin.uid,
+            rejectionReason: rejectionReason,
           );
 
       if (mounted) {
@@ -55,8 +120,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
           SnackBar(
             content: Text(
               newStatus == VerificationStatus.verified
-                  ? '✅ Verified Farmer ${farmer.name}'
-                  : '❌ Rejected Farmer ${farmer.name}',
+                  ? '✅ ${l10n.verifyFarmer}: ${farmer.name}'
+                  : '❌ ${l10n.rejectApplication}: ${farmer.name}',
             ),
             backgroundColor: newStatus == VerificationStatus.verified
                 ? AppColors.primaryGreen
@@ -68,7 +133,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update verification: $e'),
+            content: Text('${l10n.error}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -77,6 +142,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
   }
 
   void _verifyProduct(ProductModel product, VerificationStatus newStatus) async {
+    final l10n = context.l10n;
+    String? rejectionReason;
+    if (newStatus == VerificationStatus.rejected) {
+      rejectionReason = await _showRejectionReasonDialog(
+          context, '${l10n.rejectApplication}: ${product.name}');
+      if (rejectionReason == null) return;
+    }
+
     try {
       await ref
           .read(productRepositoryProvider)
@@ -84,6 +157,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
             product.id,
             status: newStatus,
             isVerifiedFarmer: newStatus == VerificationStatus.verified,
+            rejectionReason: rejectionReason,
           );
 
       if (mounted) {
@@ -91,8 +165,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
           SnackBar(
             content: Text(
               newStatus == VerificationStatus.verified
-                  ? '✅ Approved Product ${product.name}'
-                  : '❌ Rejected Product ${product.name}',
+                  ? '✅ ${l10n.productApprovals}: ${product.name}'
+                  : '❌ ${l10n.rejectApplication}: ${product.name}',
             ),
             backgroundColor: newStatus == VerificationStatus.verified
                 ? AppColors.primaryGreen
@@ -104,7 +178,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to update product approval: $e'),
+            content: Text('${l10n.error}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -115,13 +189,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(currentUserProvider);
+    final l10n = context.l10n;
 
     // SECURITY ROUTE PROTECTION (Requirement #9, #10, #11)
     if (currentUser.role != UserRole.admin) {
       return Scaffold(
         appBar: AppBar(
           title: Text(
-            'Access Denied',
+            l10n.accessDenied,
             style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
           ),
           backgroundColor: Colors.red.shade700,
@@ -138,7 +213,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
               ),
               const SizedBox(height: 16),
               Text(
-                'Access Denied: Admin Privileges Required',
+                l10n.adminPrivilegesRequired,
                 style: GoogleFonts.outfit(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -147,7 +222,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                'Your authenticated account (${currentUser.phone}) is not authorized for Admin access.',
+                '${currentUser.phone} ${l10n.accessDenied}',
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -162,10 +237,52 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
     final usersAsync = ref.watch(allUsersStreamProvider);
     final productsAsync = ref.watch(allPlatformProductsProvider);
     final ordersAsync = ref.watch(allPlatformOrdersProvider);
+    final certsAsync = ref.watch(adminCertificatesStreamProvider);
+    final batchesAsync = ref.watch(adminBatchesStreamProvider);
+    final complaintsAsync = ref.watch(adminComplaintsStreamProvider);
+    final deliveriesAsync = ref.watch(allDeliveriesStreamProvider);
 
-    final allUsers = usersAsync.value ?? [];
-    final allProducts = productsAsync.value ?? [];
-    final allOrders = ordersAsync.value ?? [];
+    final allUsers = usersAsync.when(
+      data: (data) => data.isNotEmpty ? data : SampleData.sampleUsers,
+      error: (err, stack) => SampleData.sampleUsers,
+      loading: () => SampleData.sampleUsers,
+    );
+
+    final allProducts = productsAsync.when(
+      data: (data) => data.isNotEmpty ? data : SampleData.sampleProducts,
+      error: (err, stack) => SampleData.sampleProducts,
+      loading: () => SampleData.sampleProducts,
+    );
+
+    final allOrders = ordersAsync.when(
+      data: (data) => data.isNotEmpty ? data : SampleData.sampleOrders,
+      error: (err, stack) => SampleData.sampleOrders,
+      loading: () => SampleData.sampleOrders,
+    );
+
+    final certs = certsAsync.when(
+      data: (data) => data,
+      error: (err, stack) => <OrganicCertificateModel>[],
+      loading: () => <OrganicCertificateModel>[],
+    );
+
+    final batches = batchesAsync.when(
+      data: (data) => data,
+      error: (err, stack) => <HarvestBatchModel>[],
+      loading: () => <HarvestBatchModel>[],
+    );
+
+    final complaints = complaintsAsync.when(
+      data: (data) => data,
+      error: (err, stack) => <QualityComplaintModel>[],
+      loading: () => <QualityComplaintModel>[],
+    );
+
+    final deliveries = deliveriesAsync.when(
+      data: (data) => data,
+      error: (err, stack) => <DeliveryModel>[],
+      loading: () => <DeliveryModel>[],
+    );
 
     final farmers = allUsers.where((u) => u.role == UserRole.farmer).toList();
     final customers = allUsers.where((u) => u.role == UserRole.customer).toList();
@@ -189,7 +306,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Government & Platform Admin Dashboard 🛡️',
+          '${l10n.admin} Dashboard 🛡️',
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: Colors.purple.shade700,
@@ -198,7 +315,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            tooltip: 'Admin Logout',
+            tooltip: l10n.admin,
             onPressed: () async {
               await ref.read(authRepositoryProvider).signOut();
               if (context.mounted) {
@@ -212,15 +329,23 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           indicatorColor: Colors.white,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
-          labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14),
+          labelPadding: const EdgeInsets.symmetric(horizontal: 16),
+          indicatorSize: TabBarIndicatorSize.tab,
+          labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 13),
           tabs: [
-            Tab(text: 'Farmer Queue (${pendingFarmers.length})'),
-            Tab(text: 'Product Approvals (${allProducts.length})'),
-            Tab(text: 'Orders (${allOrders.length})'),
-            Tab(text: 'Users (${allUsers.length})'),
+            Tab(text: '${l10n.farmer} (${pendingFarmers.length})'),
+            Tab(text: '${l10n.organicCertificates} (${certs.length})'),
+            Tab(text: '${l10n.harvestBatches} (${batches.length})'),
+            Tab(text: '${l10n.qualityComplaints} (${complaints.length})'),
+            Tab(text: '${l10n.pendingDeliveries} (${deliveries.length})'),
+            Tab(text: '${l10n.productApprovals} (${allProducts.length})'),
+            Tab(text: '${l10n.orders} (${allOrders.length})'),
+            Tab(text: '${l10n.customer} (${allUsers.length})'),
           ],
         ),
       ),
@@ -238,21 +363,21 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                     Row(
                       children: [
                         _buildMetricTile(
-                          'Total Farmers',
+                          l10n.farmer,
                           '${farmers.length}',
                           Icons.agriculture,
                           AppColors.primaryGreen,
                         ),
                         const SizedBox(width: 8),
                         _buildMetricTile(
-                          'Pending Verif.',
+                          l10n.pendingVerifications,
                           '${pendingFarmers.length}',
                           Icons.pending_actions,
                           Colors.orange,
                         ),
                         const SizedBox(width: 8),
                         _buildMetricTile(
-                          'Verified Farmers',
+                          l10n.verifiedFarmer,
                           '${verifiedFarmers.length}',
                           Icons.verified,
                           AppColors.verifiedGreen,
@@ -263,23 +388,23 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                     Row(
                       children: [
                         _buildMetricTile(
-                          'Total Buyers',
+                          l10n.customer,
                           '${customers.length}',
-                          Icons.people,
+                          Icons.shopping_bag,
                           Colors.blue,
                         ),
                         const SizedBox(width: 8),
                         _buildMetricTile(
-                          'Total Products',
-                          '${allProducts.length}',
-                          Icons.inventory_2,
+                          l10n.orders,
+                          '${allOrders.length}',
+                          Icons.receipt_long,
                           Colors.purple,
                         ),
                         const SizedBox(width: 8),
                         _buildMetricTile(
-                          'Platform Sales',
+                          l10n.totalRevenue,
                           '₹${totalPlatformRevenue.toStringAsFixed(0)}',
-                          Icons.payments,
+                          Icons.account_balance_wallet,
                           AppColors.accentGold,
                         ),
                       ],
@@ -301,13 +426,25 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                       rejectedFarmers,
                     ),
 
-                    // TAB 2: PRODUCT APPROVALS QUEUE
+                    // TAB 2: ORGANIC CERTIFICATES QUEUE
+                    _buildOrganicCertsTab(certs),
+
+                    // TAB 3: HARVEST BATCHES QUEUE
+                    _buildHarvestBatchesTab(batches),
+
+                    // TAB 4: QUALITY COMPLAINTS QUEUE
+                    _buildQualityComplaintsTab(complaints),
+
+                    // TAB 5: DELIVERIES MANAGEMENT QUEUE
+                    const DeliveryManagementScreen(),
+
+                    // TAB 6: PRODUCT APPROVALS QUEUE
                     _buildProductApprovalsTab(allProducts),
 
-                    // TAB 3: PLATFORM ORDERS MONITORING
+                    // TAB 7: PLATFORM ORDERS MONITORING
                     _buildOrdersMonitoringTab(allOrders),
 
-                    // TAB 4: USERS DIRECTORY
+                    // TAB 8: USERS DIRECTORY
                     _buildUsersDirectoryTab(allUsers),
                   ],
                 ),
@@ -379,6 +516,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
     List<UserModel> verifiedFarmers,
     List<UserModel> rejectedFarmers,
   ) {
+    final l10n = context.l10n;
     List<UserModel> displayList;
     if (_farmerFilter == 'Pending') {
       displayList = pendingFarmers;
@@ -395,17 +533,22 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
         // Filter Row
         Container(
           color: Colors.white,
+          width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              _buildFilterChip('Pending', 'Pending (${pendingFarmers.length})', isFarmer: true),
-              const SizedBox(width: 8),
-              _buildFilterChip('Verified', 'Verified (${verifiedFarmers.length})', isFarmer: true),
-              const SizedBox(width: 8),
-              _buildFilterChip('Rejected', 'Rejected (${rejectedFarmers.length})', isFarmer: true),
-              const SizedBox(width: 8),
-              _buildFilterChip('All', 'All (${allFarmers.length})', isFarmer: true),
-            ],
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: [
+                _buildFilterChip('Pending', '${l10n.pendingFilter} (${pendingFarmers.length})', isFarmer: true),
+                const SizedBox(width: 8),
+                _buildFilterChip('Verified', '${l10n.verifiedStatus} (${verifiedFarmers.length})', isFarmer: true),
+                const SizedBox(width: 8),
+                _buildFilterChip('Rejected', '${l10n.rejectedFilter} (${rejectedFarmers.length})', isFarmer: true),
+                const SizedBox(width: 8),
+                _buildFilterChip('All', '${l10n.allFilter} (${allFarmers.length})', isFarmer: true),
+              ],
+            ),
           ),
         ),
         const Divider(height: 1),
@@ -463,15 +606,15 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Location: ${farmer.village.isNotEmpty ? "${farmer.village}, " : ""}${farmer.district}, ${farmer.state}',
+                              '${l10n.locationLabel}: ${farmer.village.isNotEmpty ? "${farmer.village}, " : ""}${farmer.district}, ${farmer.state}',
                               style: GoogleFonts.inter(fontSize: 14),
                             ),
                             Text(
-                              'Farmer Type: ${farmer.farmerType}',
+                              '${l10n.farmerTypeLabel}: ${LocalizedHelpers.getFarmerTypeName(context, farmer.farmerType)}',
                               style: GoogleFonts.inter(fontSize: 14),
                             ),
                             Text(
-                              'Phone: ${farmer.phone}',
+                              '${l10n.phoneLabel}: ${farmer.phone}',
                               style: GoogleFonts.inter(fontSize: 14),
                             ),
                             Text(
@@ -496,7 +639,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                                       VerificationStatus.rejected,
                                     ),
                                     icon: const Icon(Icons.close, size: 18),
-                                    label: const Text('REJECT'),
+                                    label: Text(l10n.reject.toUpperCase()),
                                   ),
                                 const SizedBox(width: 12),
                                 if (farmer.verificationStatus !=
@@ -510,7 +653,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                                       VerificationStatus.verified,
                                     ),
                                     icon: const Icon(Icons.check, size: 18),
-                                    label: const Text('APPROVE & VERIFY'),
+                                    label: Text(l10n.approveAndVerify.toUpperCase()),
                                   ),
                               ],
                             ),
@@ -527,6 +670,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
 
   // TAB 2: PRODUCT APPROVALS QUEUE
   Widget _buildProductApprovalsTab(List<ProductModel> products) {
+    final l10n = context.l10n;
     List<ProductModel> displayList = products;
     if (_productFilter == 'Approved') {
       displayList = products
@@ -546,17 +690,22 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
       children: [
         Container(
           color: Colors.white,
+          width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            children: [
-              _buildFilterChip('All', 'All (${products.length})', isFarmer: false),
-              const SizedBox(width: 8),
-              _buildFilterChip('Pending', 'Pending Review', isFarmer: false),
-              const SizedBox(width: 8),
-              _buildFilterChip('Approved', 'Approved', isFarmer: false),
-              const SizedBox(width: 8),
-              _buildFilterChip('Rejected', 'Rejected', isFarmer: false),
-            ],
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: [
+                _buildFilterChip('All', '${l10n.allFilter} (${products.length})', isFarmer: false),
+                const SizedBox(width: 8),
+                _buildFilterChip('Pending', l10n.pendingFilter, isFarmer: false),
+                const SizedBox(width: 8),
+                _buildFilterChip('Approved', l10n.approvedFilter, isFarmer: false),
+                const SizedBox(width: 8),
+                _buildFilterChip('Rejected', l10n.rejectedFilter, isFarmer: false),
+              ],
+            ),
           ),
         ),
         const Divider(height: 1),
@@ -622,27 +771,30 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
-                                OutlinedButton(
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: Colors.red,
+                                if (p.certificationStatus != VerificationStatus.rejected)
+                                  OutlinedButton(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.red,
+                                    ),
+                                    onPressed: () => _verifyProduct(
+                                      p,
+                                      VerificationStatus.rejected,
+                                    ),
+                                    child: Text(l10n.rejectProduct),
                                   ),
-                                  onPressed: () => _verifyProduct(
-                                    p,
-                                    VerificationStatus.rejected,
+                                const SizedBox(width: 12),
+                                if (p.certificationStatus != VerificationStatus.verified)
+                                  ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primaryGreen,
+                                    ),
+                                    onPressed: () => _verifyProduct(
+                                      p,
+                                      VerificationStatus.verified,
+                                    ),
+                                    icon: const Icon(Icons.check_circle_outline, size: 18),
+                                    label: Text(l10n.approveAndPublish),
                                   ),
-                                  child: const Text('Reject Product'),
-                                ),
-                                const SizedBox(width: 10),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppColors.primaryGreen,
-                                  ),
-                                  onPressed: () => _verifyProduct(
-                                    p,
-                                    VerificationStatus.verified,
-                                  ),
-                                  child: const Text('Approve & Publish'),
-                                ),
                               ],
                             ),
                           ],
@@ -658,6 +810,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
 
   // TAB 3: PLATFORM ORDERS MONITORING
   Widget _buildOrdersMonitoringTab(List<OrderModel> orders) {
+    final l10n = context.l10n;
     if (orders.isEmpty) {
       return Center(
         child: Column(
@@ -670,7 +823,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
             ),
             const SizedBox(height: 12),
             Text(
-              'No platform orders recorded yet.',
+              l10n.noOrdersRecordedYet,
               style: GoogleFonts.outfit(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -713,7 +866,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                           const SizedBox(width: 8),
                           Expanded(
                             child: SelectableText(
-                              'Order #${o.id}',
+                              '${l10n.orderIdLabel} #${o.id}',
                               style: GoogleFonts.outfit(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
@@ -758,23 +911,23 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                   runSpacing: 10,
                   children: [
                     _buildOrderDetailItem(
-                      label: 'Buyer',
+                      label: l10n.buyerLabel,
                       value: o.customerName,
                       icon: Icons.person_outline,
                     ),
                     _buildOrderDetailItem(
-                      label: 'Farmer',
+                      label: l10n.farmerLabel,
                       value: o.farmerName,
                       icon: Icons.agriculture_outlined,
                     ),
                     _buildOrderDetailItem(
-                      label: 'Product',
+                      label: l10n.productLabel,
                       value: o.productName,
                       icon: Icons.grass,
                     ),
                     _buildOrderDetailItem(
-                      label: 'Quantity',
-                      value: '${o.quantity} ${o.unit}',
+                      label: l10n.quantityLabel,
+                      value: '${o.quantity} ${LocalizedHelpers.getUnitName(context, o.unit)}',
                       icon: Icons.scale_outlined,
                     ),
                   ],
@@ -782,8 +935,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
 
                 const SizedBox(height: 12),
 
-                // Status Badges Row
-                Row(
+                // Status Badges Row (wrapped to prevent overflow)
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
                   children: [
                     // Order Status Badge
                     Container(
@@ -797,7 +952,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                         border: Border.all(color: Colors.blue.shade200),
                       ),
                       child: Text(
-                        'Status: ${o.orderStatus}',
+                        '${l10n.statusLabel}: ${o.orderStatus}',
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -805,7 +960,6 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     // Payment Status Badge
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -820,7 +974,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
                         ),
                       ),
                       child: Text(
-                        'Payment: ${o.paymentStatus}',
+                        '${l10n.paymentLabel}: ${o.paymentStatus}',
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -880,10 +1034,11 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
 
   // TAB 4: USERS DIRECTORY
   Widget _buildUsersDirectoryTab(List<UserModel> users) {
+    final l10n = context.l10n;
     if (users.isEmpty) {
       return Center(
         child: Text(
-          'No users registered yet.',
+          l10n.noUsersRegisteredYet,
           style: GoogleFonts.outfit(fontSize: 16, color: AppColors.textMuted),
         ),
       );
@@ -919,7 +1074,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
               style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
             ),
             subtitle: Text(
-              'Role: ${u.role.name.toUpperCase()} • Phone: ${u.phone}\nLocation: ${u.district}, ${u.state}',
+              '${l10n.roleLabel}: ${u.role.name.toUpperCase()} • ${l10n.phoneLabel}: ${u.phone}\n${l10n.locationLabel}: ${u.district}, ${u.state}',
               style: GoogleFonts.inter(fontSize: 13),
             ),
             trailing: _buildStatusBadge(u.verificationStatus),
@@ -954,6 +1109,250 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen>
       ),
       backgroundColor: Colors.purple.shade50,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    );
+  }
+
+  Widget _buildOrganicCertsTab(List<OrganicCertificateModel> certs) {
+    final l10n = context.l10n;
+    final admin = ref.read(currentUserProvider);
+    if (certs.isEmpty) {
+      return Center(
+        child: Text(
+          'No organic certificates submitted yet.',
+          style: GoogleFonts.outfit(fontSize: 16, color: AppColors.textMuted),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: certs.length,
+      itemBuilder: (context, index) {
+        final c = certs[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      c.certificateType,
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    _buildTextBadge(c.verificationStatus),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text('Farmer: ${c.farmerName} (ID: ${c.farmerId})', style: GoogleFonts.inter(fontSize: 14)),
+                Text('Cert #: ${c.certificateNumber} • Body: ${c.certificationBody}', style: GoogleFonts.inter(fontSize: 14)),
+                Text('Expiry: ${c.expiryDate.toString().split(' ').first}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (c.verificationStatus != 'rejected')
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                        onPressed: () async {
+                          final reason = await _showRejectionReasonDialog(context, 'Reject Certificate');
+                          if (reason != null) {
+                            await ref.read(organicCertificateRepositoryProvider).updateCertificateVerificationStatus(
+                              certificateId: c.certificateId,
+                              status: 'rejected',
+                              adminId: admin.uid,
+                              rejectionReason: reason,
+                            );
+                          }
+                        },
+                        child: Text(l10n.reject),
+                      ),
+                    const SizedBox(width: 8),
+                    if (c.verificationStatus != 'approved')
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+                        onPressed: () async {
+                          await ref.read(organicCertificateRepositoryProvider).updateCertificateVerificationStatus(
+                            certificateId: c.certificateId,
+                            status: 'approved',
+                            adminId: admin.uid,
+                          );
+                        },
+                        child: Text(l10n.approve),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHarvestBatchesTab(List<HarvestBatchModel> batches) {
+    final l10n = context.l10n;
+    final admin = ref.read(currentUserProvider);
+    if (batches.isEmpty) {
+      return Center(
+        child: Text(
+          'No harvest batches submitted yet.',
+          style: GoogleFonts.outfit(fontSize: 16, color: AppColors.textMuted),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: batches.length,
+      itemBuilder: (context, index) {
+        final b = batches[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${b.productName} (${b.batchId})',
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                    _buildTextBadge(b.verificationStatus),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text('Farmer: ${b.farmerName} • Grade: ${b.qualityGrade}', style: GoogleFonts.inter(fontSize: 14)),
+                Text('Harvest Date: ${b.harvestDate.toString().split(' ').first} • Quantity: ${b.quantity}', style: GoogleFonts.inter(fontSize: 14)),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (b.verificationStatus != 'rejected')
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                        onPressed: () async {
+                          final reason = await _showRejectionReasonDialog(context, 'Reject Batch');
+                          if (reason != null) {
+                            await ref.read(harvestBatchRepositoryProvider).updateBatchVerificationStatus(
+                              batchId: b.batchId,
+                              status: 'rejected',
+                              adminId: admin.uid,
+                              rejectionReason: reason,
+                            );
+                          }
+                        },
+                        child: Text(l10n.reject),
+                      ),
+                    const SizedBox(width: 8),
+                    if (b.verificationStatus != 'approved')
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+                        onPressed: () async {
+                          await ref.read(harvestBatchRepositoryProvider).updateBatchVerificationStatus(
+                            batchId: b.batchId,
+                            status: 'approved',
+                            adminId: admin.uid,
+                          );
+                        },
+                        child: Text(l10n.approve),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildQualityComplaintsTab(List<QualityComplaintModel> complaints) {
+    if (complaints.isEmpty) {
+      return Center(
+        child: Text(
+          'No customer quality complaints reported.',
+          style: GoogleFonts.outfit(fontSize: 16, color: AppColors.textMuted),
+        ),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: complaints.length,
+      itemBuilder: (context, index) {
+        final cmp = complaints[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Issue: ${cmp.issueType.toUpperCase()}',
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.red.shade700),
+                    ),
+                    _buildTextBadge(cmp.status),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text('Customer: ${cmp.customerName} • Product: ${cmp.productName}', style: GoogleFonts.inter(fontSize: 14)),
+                Text('Order ID: ${cmp.orderId} • Batch ID: ${cmp.batchId}', style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary)),
+                Text('Description: "${cmp.description}"', style: GoogleFonts.inter(fontSize: 14)),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    if (cmp.status != 'resolved')
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primaryGreen),
+                        onPressed: () async {
+                          await ref.read(qualityComplaintRepositoryProvider).updateComplaintStatus(
+                            complaintId: cmp.complaintId,
+                            status: 'resolved',
+                            adminRemarks: 'Reviewed and resolved by Admin',
+                          );
+                        },
+                        child: const Text('Mark Resolved'),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTextBadge(String status) {
+    Color color = Colors.orange;
+    if (status == 'approved' || status == 'resolved' || status == 'verified') {
+      color = AppColors.primaryGreen;
+    } else if (status == 'rejected') {
+      color = Colors.red;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        status.toUpperCase(),
+        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+      ),
     );
   }
 

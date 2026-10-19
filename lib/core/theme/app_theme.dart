@@ -9,7 +9,7 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       primaryColor: AppColors.primaryGreen,
-      scaffoldBackgroundColor: AppColors.lightBg,
+      scaffoldBackgroundColor: Colors.transparent,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primaryGreen,
         primary: AppColors.primaryGreen,
@@ -21,17 +21,17 @@ class AppTheme {
         displayLarge: GoogleFonts.outfit(
           fontWeight: FontWeight.bold,
           fontSize: 36,
-          color: AppColors.textPrimary,
+          color: Colors.white,
         ),
         displayMedium: GoogleFonts.outfit(
           fontWeight: FontWeight.bold,
           fontSize: 30,
-          color: AppColors.textPrimary,
+          color: Colors.white,
         ),
         titleLarge: GoogleFonts.outfit(
           fontWeight: FontWeight.w700,
           fontSize: 26,
-          color: AppColors.textPrimary,
+          color: Colors.white,
         ),
         titleMedium: GoogleFonts.inter(
           fontWeight: FontWeight.w600,
@@ -65,21 +65,28 @@ class AppTheme {
         labelSmall: GoogleFonts.inter(fontSize: 12, color: AppColors.textMuted),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.primaryGreen,
+        backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         titleTextStyle: GoogleFonts.outfit(
           fontWeight: FontWeight.bold,
-          fontSize: 24,
+          fontSize: 22,
           color: Colors.white,
         ),
       ),
       cardTheme: CardThemeData(
         color: AppColors.cardLight,
-        elevation: 3,
-        shadowColor: Colors.black.withValues(alpha: 0.08),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 2,
+        shadowColor: Colors.black.withValues(alpha: 0.10),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: Colors.white.withValues(alpha: 0.35),
+            width: 1,
+          ),
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -122,6 +129,13 @@ class AppTheme {
           fontSize: 16,
           color: AppColors.textSecondary,
         ),
+        floatingLabelStyle: WidgetStateTextStyle.resolveWith((states) {
+          return GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          );
+        }),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppColors.borderLight),

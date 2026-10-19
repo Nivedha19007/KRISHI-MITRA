@@ -36,6 +36,22 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
     List<Widget> screens;
     List<BottomNavigationBarItem> navItems;
 
+    String cleanNavLabel(String text) {
+      if (text.contains('/')) {
+        return text.split('/').first.trim();
+      }
+      if (text.toLowerCase().startsWith('my ')) {
+        return text.substring(3).trim();
+      }
+      if (text.toLowerCase().startsWith('farmer ')) {
+        return text.substring(7).trim();
+      }
+      if (text.toLowerCase().startsWith('live ')) {
+        return text.substring(5).trim();
+      }
+      return text;
+    }
+
     if (user.role == UserRole.farmer) {
       screens = [
         const FarmerHomeScreen(), // Farmer Dashboard
@@ -50,21 +66,21 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
           icon: const Icon(Icons.dashboard_rounded),
           label: l10n.home,
         ),
-        const BottomNavigationBarItem(
-          icon: Icon(Icons.inventory_2_rounded),
-          label: 'My Products',
+        BottomNavigationBarItem(
+          icon: const Icon(Icons.inventory_2_rounded),
+          label: cleanNavLabel(l10n.myProducts),
         ),
         BottomNavigationBarItem(
           icon: const Icon(Icons.receipt_long_rounded),
-          label: l10n.orders,
+          label: cleanNavLabel(l10n.orders),
         ),
         BottomNavigationBarItem(
           icon: const Icon(Icons.storefront_rounded),
-          label: l10n.mandi,
+          label: cleanNavLabel(l10n.mandi),
         ),
         BottomNavigationBarItem(
           icon: const Icon(Icons.forum_rounded),
-          label: l10n.community,
+          label: cleanNavLabel(l10n.community),
         ),
         BottomNavigationBarItem(
           icon: const Icon(Icons.person_rounded),
@@ -87,19 +103,19 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         ),
         BottomNavigationBarItem(
           icon: const Icon(Icons.shopping_bag_rounded),
-          label: l10n.marketplace,
+          label: 'Market',
         ),
         BottomNavigationBarItem(
           icon: const Icon(Icons.shopping_cart_rounded),
-          label: l10n.buyProducts,
+          label: 'Cart',
         ),
         BottomNavigationBarItem(
           icon: const Icon(Icons.local_shipping_rounded),
-          label: l10n.orders,
+          label: cleanNavLabel(l10n.orders),
         ),
         BottomNavigationBarItem(
           icon: const Icon(Icons.bar_chart_rounded),
-          label: l10n.mandiPrices,
+          label: cleanNavLabel(l10n.mandi),
         ),
         BottomNavigationBarItem(
           icon: const Icon(Icons.person_rounded),
@@ -232,8 +248,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
                               ),
                               Text(
                                 user.role == UserRole.farmer
-                                    ? '👨‍🌾 Farmer Account'
-                                    : (user.role == UserRole.admin ? '🛡️ Admin' : '🛒 Buyer'),
+                                    ? '👨‍🌾 ${l10n.farmer}'
+                                    : (user.role == UserRole.admin ? '🛡️ ${l10n.admin}' : '🛒 ${l10n.customer}'),
                                 style: GoogleFonts.inter(
                                   fontSize: 11,
                                   color: AppColors.primaryGreen,
@@ -387,11 +403,16 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
           type: BottomNavigationBarType.fixed,
           selectedItemColor: AppColors.primaryGreen,
           unselectedItemColor: Colors.grey.shade600,
+          selectedFontSize: 11,
+          unselectedFontSize: 10,
           selectedLabelStyle: GoogleFonts.inter(
             fontWeight: FontWeight.bold,
+            fontSize: 11,
+          ),
+          unselectedLabelStyle: GoogleFonts.inter(
+            fontWeight: FontWeight.w500,
             fontSize: 10,
           ),
-          unselectedLabelStyle: GoogleFonts.inter(fontSize: 10),
           items: navItems,
         ),
       ),

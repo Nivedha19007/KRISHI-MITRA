@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../data/datasources/sample_data.dart';
 import '../../core/constants/app_colors.dart';
 
+import '../../core/localization/localized_helpers.dart';
 import '../../core/widgets/responsive_center.dart';
 
 class SchemesScreen extends StatelessWidget {
@@ -10,9 +11,10 @@ class SchemesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final schemes = SampleData.sampleSchemes;
+    final l10n = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Government Schemes 🏛️')),
+      appBar: AppBar(title: Text('${l10n.schemesTitle} 🏛️')),
       body: ResponsiveCenter(
         maxWidth: 1000,
         child: ListView.builder(
@@ -60,9 +62,9 @@ class SchemesScreen extends StatelessWidget {
                       style: const TextStyle(fontSize: 16),
                     ),
                     const SizedBox(height: 12),
-                    const Text(
-                      'Eligibility:',
-                      style: TextStyle(
+                    Text(
+                      '${l10n.eligibility}:',
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
                       ),
@@ -75,9 +77,9 @@ class SchemesScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Key Benefits:',
-                      style: TextStyle(
+                    Text(
+                      '${l10n.keyBenefits}:',
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
                       ),
@@ -118,9 +120,9 @@ class SchemesScreen extends StatelessWidget {
                               ),
                             );
                           },
-                          child: const Text(
-                            'Apply Info',
-                            style: TextStyle(
+                          child: Text(
+                            l10n.applyNow,
+                            style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
                             ),

@@ -4,9 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/india_locations.dart';
-import '../../core/localization/locale_provider.dart';
+import '../../core/localization/localized_helpers.dart';
 import '../../core/utils/distance_calculator.dart';
 import '../../data/models/product_model.dart';
+import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/product_repository.dart';
 import '../../core/widgets/responsive_center.dart';
@@ -35,7 +36,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   late TextEditingController _priceController;
   late TextEditingController _descriptionController;
   late TextEditingController _certificateController;
+  late TextEditingController _certificateUrlController;
   late TextEditingController _imageUrlController;
+  late TextEditingController _bulkMinQtyController;
+  late TextEditingController _bulkPriceController;
 
   String _state = 'Tamil Nadu';
   String _district = 'Coimbatore';
@@ -128,8 +132,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     );
     _descriptionController = TextEditingController(text: p?.description ?? '');
     _certificateController = TextEditingController(text: p?.certificateName ?? '');
+    _certificateUrlController = TextEditingController(text: p?.certificateUrl ?? '');
     _imageUrlController = TextEditingController(
       text: (p?.imageUrls.isNotEmpty == true) ? p!.imageUrls.first : '',
+    );
+    _bulkMinQtyController = TextEditingController(
+      text: p?.bulkDiscountMinQty != null ? p!.bulkDiscountMinQty.toString() : '',
+    );
+    _bulkPriceController = TextEditingController(
+      text: p?.bulkDiscountPricePerUnit != null ? p!.bulkDiscountPricePerUnit.toString() : '',
     );
 
     if (p != null) {
@@ -160,7 +171,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _priceController.dispose();
     _descriptionController.dispose();
     _certificateController.dispose();
+    _certificateUrlController.dispose();
     _imageUrlController.dispose();
+    _bulkMinQtyController.dispose();
+    _bulkPriceController.dispose();
     super.dispose();
   }
 
@@ -168,6 +182,19 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final currentUser = ref.read(currentUserProvider);
+    final l10n = context.l10n;
+    final isFarmerVerified = currentUser.verificationStatus == VerificationStatus.verified;
+
+    if (currentUser.role == UserRole.farmer && !isFarmerVerified) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(l10n.accountVerificationPendingDesc),
+          backgroundColor: Colors.orange.shade800,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
 
     final qty = double.tryParse(_quantityController.text.trim());
     final stock = double.tryParse(_stockController.text.trim());
@@ -256,15 +283,22 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       description: _descriptionController.text.trim(),
       imageUrls: [_imageUrlController.text.trim()],
       certificateName: _certificateController.text.trim(),
-      certificateUrl: widget.productToEdit?.certificateUrl ??
-          'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400',
+      certificateUrl: _certificateUrlController.text.trim().isNotEmpty
+          ? _certificateUrlController.text.trim()
+          : (widget.productToEdit?.certificateUrl ??
+              'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400'),
       isOrganic: _isOrganic,
-      isVerifiedFarmer: _isVerifiedFarmer,
+      isVerifiedFarmer: isFarmerVerified,
+      certificationStatus: isFarmerVerified
+          ? VerificationStatus.verified
+          : VerificationStatus.pending,
       farmingType: _isOrganic ? 'Organic' : 'Conventional',
       batchId: generatedBatchId,
       isPublished: _isPublished,
       rating: widget.productToEdit?.rating ?? 4.8,
       reviewCount: widget.productToEdit?.reviewCount ?? 1,
+      bulkDiscountMinQty: double.tryParse(_bulkMinQtyController.text.trim()),
+      bulkDiscountPricePerUnit: double.tryParse(_bulkPriceController.text.trim()),
     );
 
     try {
@@ -345,6 +379,40 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     }
   }
 
+  Future<void> _pickCertificate() async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+      );
+      if (pickedFile != null) {
+        setState(() {
+          _certificateUrlController.text = pickedFile.path;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Verified certificate selected successfully!'),
+              backgroundColor: AppColors.primaryGreen,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not access image picker: $e'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final districts = IndiaLocations.getDistricts(_state);
@@ -354,7 +422,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          isEditing ? 'Edit Crop Product' : '${l10n.addProduct} (${l10n.farmer})',
+          isEditing ? '${l10n.edit} ${l10n.crop}' : '${l10n.addProduct} (${l10n.farmer})',
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: AppColors.primaryGreen,
@@ -386,22 +454,22 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildSectionTitle('1. Farmer & Location Information'),
+                                  _buildSectionTitle('1. ${l10n.farmerLocationInfo}'),
                                   const SizedBox(height: 12),
                                   _buildFarmerLocationFields(districts),
                                   const SizedBox(height: 24),
 
-                                  _buildSectionTitle('2. Crop Details & Pricing'),
+                                  _buildSectionTitle('2. ${l10n.cropDetailsPricing}'),
                                   const SizedBox(height: 12),
                                   _buildCropPricingFields(),
                                   const SizedBox(height: 24),
 
-                                  _buildSectionTitle('3. Supply Chain & Traceability Status'),
+                                  _buildSectionTitle('3. ${l10n.supplyChainTraceabilityStatus}'),
                                   const SizedBox(height: 12),
                                   _buildTraceabilityFields(),
                                   const SizedBox(height: 24),
 
-                                  _buildSectionTitle('4. Organic & Verification Badges'),
+                                  _buildSectionTitle('4. ${l10n.organicCertified} & ${l10n.verifiedFarmer}'),
                                   const SizedBox(height: 12),
                                   _buildBadgesFields(),
                                 ],
@@ -414,7 +482,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildSectionTitle('5. Crop Photo & Marketplace Preview'),
+                                  _buildSectionTitle('5. ${l10n.uploadCropPhoto}'),
                                   const SizedBox(height: 12),
                                   _buildPhotoUploadCard(),
                                   const SizedBox(height: 20),
@@ -426,7 +494,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         ),
                         const SizedBox(height: 24),
 
-                        _buildSectionTitle('6. Description & Publish Status'),
+                        _buildSectionTitle('6. ${l10n.productTimeline} & ${l10n.submit}'),
                         const SizedBox(height: 12),
                         _buildDescriptionAndPublishSection(isEditing),
                       ],
@@ -439,29 +507,31 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       _buildHeaderBanner(isEditing),
                       const SizedBox(height: 20),
 
-                      _buildSectionTitle('1. Farmer & Location Information'),
+                      _buildSectionTitle('1. ${l10n.farmerLocationInfo}'),
                       const SizedBox(height: 12),
                       _buildFarmerLocationFields(districts),
                       const SizedBox(height: 24),
 
-                      _buildSectionTitle('2. Crop Details & Pricing'),
+                      _buildSectionTitle('2. ${l10n.cropDetailsPricing}'),
                       const SizedBox(height: 12),
                       _buildCropPricingFields(),
+                      const SizedBox(height: 12),
+                      _buildBulkDiscountFields(),
                       const SizedBox(height: 24),
 
-                      _buildSectionTitle('3. Supply Chain & Traceability Status'),
+                      _buildSectionTitle('3. ${l10n.supplyChainTraceabilityStatus}'),
                       const SizedBox(height: 12),
                       _buildTraceabilityFields(),
                       const SizedBox(height: 24),
 
-                      _buildSectionTitle('4. Upload Crop Photo & Verification Badges'),
+                      _buildSectionTitle('4. ${l10n.uploadCropPhoto} & ${l10n.verifiedFarmer}'),
                       const SizedBox(height: 12),
                       _buildPhotoUploadCard(),
                       const SizedBox(height: 12),
                       _buildBadgesFields(),
                       const SizedBox(height: 24),
 
-                      _buildSectionTitle('5. Description & Publish Status'),
+                      _buildSectionTitle('5. ${l10n.submit}'),
                       const SizedBox(height: 12),
                       _buildDescriptionAndPublishSection(isEditing),
                     ],
@@ -476,6 +546,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Widget _buildHeaderBanner(bool isEditing) {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -498,7 +569,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isEditing ? 'Edit Crop Details' : 'Sell Directly to Customers',
+                  isEditing ? '${l10n.edit} ${l10n.crop}' : l10n.sellDirectlyToCustomers,
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -507,8 +578,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 ),
                 Text(
                   isEditing
-                      ? 'Update crop inventory, pricing, or publish status for your product.'
-                      : 'Upon submission, your crop will automatically appear in the Customer Marketplace.',
+                      ? '${l10n.edit} ${l10n.myProducts}'
+                      : l10n.sellDirectlySubtitle,
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: AppColors.textSecondary,
@@ -522,106 +593,182 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     );
   }
 
+  Widget _buildFormFieldWrapper({
+    required String label,
+    required Widget child,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+
   Widget _buildFarmerLocationFields(List<String> districts) {
+    final l10n = context.l10n;
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: TextFormField(
-                controller: _farmerNameController,
-                readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: 'Farmer Name (Authenticated)',
-                  prefixIcon: Icon(Icons.person),
+              child: _buildFormFieldWrapper(
+                label: '${l10n.farmerNameLabel} (✓)',
+                child: TextFormField(
+                  controller: _farmerNameController,
+                  readOnly: true,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.person, color: AppColors.primaryGreen),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: TextFormField(
-                controller: _mobileController,
-                readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: 'Mobile Number (Authenticated)',
-                  prefixIcon: Icon(Icons.phone),
+              child: _buildFormFieldWrapper(
+                label: '${l10n.mobileNumberLabel} (✓)',
+                child: TextFormField(
+                  controller: _mobileController,
+                  readOnly: true,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.phone, color: AppColors.primaryGreen),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         Row(
           children: [
             Expanded(
-              child: DropdownButtonFormField<String>(
-                initialValue: _state,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'State *',
+              child: _buildFormFieldWrapper(
+                label: '${l10n.state} *',
+                child: DropdownButtonFormField<String>(
+                  initialValue: _state,
+                  isExpanded: true,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: const InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
+                  items: IndiaLocations.statesAndUTs
+                      .map(
+                        (s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(s, overflow: TextOverflow.ellipsis),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      setState(() {
+                        _state = v;
+                        final dList = IndiaLocations.getDistricts(v);
+                        _district = dList.first;
+                      });
+                    }
+                  },
                 ),
-                items: IndiaLocations.statesAndUTs
-                    .map(
-                      (s) => DropdownMenuItem(
-                        value: s,
-                        child: Text(s, overflow: TextOverflow.ellipsis),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) {
-                    setState(() {
-                      _state = v;
-                      final dList = IndiaLocations.getDistricts(v);
-                      _district = dList.first;
-                    });
-                  }
-                },
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: DropdownButtonFormField<String>(
-                initialValue: districts.contains(_district)
-                    ? _district
-                    : districts.first,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'District *',
+              child: _buildFormFieldWrapper(
+                label: '${l10n.district} *',
+                child: DropdownButtonFormField<String>(
+                  initialValue: districts.contains(_district)
+                      ? _district
+                      : districts.first,
+                  isExpanded: true,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: const InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
+                  items: districts
+                      .map(
+                        (d) => DropdownMenuItem(
+                          value: d,
+                          child: Text(d, overflow: TextOverflow.ellipsis),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _district = v);
+                  },
                 ),
-                items: districts
-                    .map(
-                      (d) => DropdownMenuItem(
-                        value: d,
-                        child: Text(d, overflow: TextOverflow.ellipsis),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) {
-                  if (v != null) setState(() => _district = v);
-                },
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         Row(
           children: [
             Expanded(
-              child: TextFormField(
-                controller: _villageController,
-                decoration: const InputDecoration(
-                  labelText: 'Village / Taluk',
+              child: _buildFormFieldWrapper(
+                label: l10n.village,
+                child: TextFormField(
+                  controller: _villageController,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. ${l10n.village}',
+                    hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: TextFormField(
-                controller: _farmLocationController,
-                decoration: const InputDecoration(
-                  labelText: 'Farm Location',
-                  hintText: 'e.g. Green Acres Farm',
+              child: _buildFormFieldWrapper(
+                label: l10n.farmLocation,
+                child: TextFormField(
+                  controller: _farmLocationController,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. ${l10n.farmLocation}',
+                    hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
                 ),
               ),
             ),
@@ -632,67 +779,108 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Widget _buildCropPricingFields() {
+    final l10n = context.l10n;
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: TextFormField(
-                controller: _cropNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Crop Name *',
-                  hintText: 'e.g. Organic Tomato',
+              child: _buildFormFieldWrapper(
+                label: '${l10n.cropName} *',
+                child: TextFormField(
+                  controller: _cropNameController,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. ${l10n.cropName}',
+                    hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
+                  validator: (v) => v == null || v.trim().isEmpty ? l10n.error : null,
+                  onChanged: (_) => setState(() {}),
                 ),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Crop name is required' : null,
-                onChanged: (_) => setState(() {}),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: DropdownButtonFormField<String>(
-                initialValue: _category,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Category *',
+              child: _buildFormFieldWrapper(
+                label: '${l10n.category} *',
+                child: DropdownButtonFormField<String>(
+                  initialValue: _category,
+                  isExpanded: true,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: const InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
+                  items: ['Vegetables', 'Fruits', 'Grains', 'Pulses', 'Spices', 'Organic']
+                      .map((c) => DropdownMenuItem(
+                            value: c,
+                            child: Text(LocalizedHelpers.getCategoryName(context, c)),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setState(() => _category = v!),
                 ),
-                items: ['Vegetables', 'Fruits', 'Grains', 'Pulses', 'Spices', 'Organic']
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (v) => setState(() => _category = v!),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         Row(
           children: [
             Expanded(
-              child: TextFormField(
-                controller: _varietyController,
-                decoration: const InputDecoration(
-                  labelText: 'Crop Variety *',
-                  hintText: 'e.g. Country / Hybrid',
+              child: _buildFormFieldWrapper(
+                label: '${l10n.cropVariety} *',
+                child: TextFormField(
+                  controller: _varietyController,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'e.g. ${l10n.cropVariety}',
+                    hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
+                  validator: (v) => v == null || v.trim().isEmpty ? l10n.error : null,
                 ),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Variety is required' : null,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: DropdownButtonFormField<String>(
-                initialValue: _unit,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Unit *',
+              child: _buildFormFieldWrapper(
+                label: '${l10n.quantity} *',
+                child: DropdownButtonFormField<String>(
+                  initialValue: _unit,
+                  isExpanded: true,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: const InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  ),
+                  items: ['kg', 'Ton', 'Quintal', 'Dozen', 'Item']
+                      .map((u) => DropdownMenuItem(
+                            value: u,
+                            child: Text(LocalizedHelpers.getUnitName(context, u)),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setState(() => _unit = v!),
                 ),
-                items: ['kg', 'Ton', 'Quintal', 'Box']
-                    .map((u) => DropdownMenuItem(value: u, child: Text(u)))
-                    .toList(),
-                onChanged: (v) => setState(() => _unit = v!),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         LayoutBuilder(
           builder: (context, constraints) {
             if (constraints.maxWidth > 550) {
@@ -715,7 +903,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       Expanded(child: _buildStockField()),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   _buildPriceField(),
                 ],
               );
@@ -726,17 +914,121 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     );
   }
 
+  Widget _buildBulkDiscountFields() {
+    final l10n = context.l10n;
+    return Card(
+      elevation: 2,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.local_offer_outlined, color: AppColors.primaryGreen, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  l10n.bulkDiscountTitle,
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 6),
+                        child: Text(
+                          'Min Bulk Qty ($_unit)',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      TextFormField(
+                        controller: _bulkMinQtyController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                        ),
+                        decoration: const InputDecoration(
+                          hintText: 'e.g. 50',
+                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 6),
+                        child: Text(
+                          'Bulk Price / Unit (₹)',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      TextFormField(
+                        controller: _bulkPriceController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                        ),
+                        decoration: const InputDecoration(
+                          hintText: 'e.g. 25',
+                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTraceabilityFields() {
+    final l10n = context.l10n;
     return Column(
       children: [
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(
             Icons.calendar_today,
-            color: AppColors.primaryGreen,
+            color: Colors.white,
           ),
           title: Text(
-            'Harvest Date: ${_harvestDate.toString().split(' ').first}',
+            '${l10n.harvestDate}: ${_harvestDate.toString().split(' ').first}',
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           trailing: TextButton(
             onPressed: () async {
@@ -748,17 +1040,29 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               );
               if (d != null) setState(() => _harvestDate = d);
             },
-            child: const Text('Change'),
+            child: Text(
+              l10n.change,
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
+                decorationColor: Colors.white,
+              ),
+            ),
           ),
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: const Icon(
             Icons.local_shipping_outlined,
-            color: AppColors.primaryGreen,
+            color: Colors.white,
           ),
           title: Text(
-            'Expected Delivery Time: ${_expectedDeliveryDate.toString().split(' ').first}',
+            '${l10n.expectedDeliveryTime}: ${_expectedDeliveryDate.toString().split(' ').first}',
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           trailing: TextButton(
             onPressed: () async {
@@ -770,31 +1074,75 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               );
               if (d != null) setState(() => _expectedDeliveryDate = d);
             },
-            child: const Text('Change'),
+            child: Text(
+              l10n.change,
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
+                decorationColor: Colors.white,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 6),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          activeThumbColor: AppColors.primaryGreen,
-          title: const Text('Quality Checked Status'),
-          subtitle: const Text('Certified quality inspection passed'),
+          activeThumbColor: Colors.white,
+          activeTrackColor: AppColors.leafGreen,
+          title: Text(
+            l10n.qualityChecked,
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            l10n.certificateVerified,
+            style: GoogleFonts.inter(
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+          ),
           value: _qualityChecked,
           onChanged: (v) => setState(() => _qualityChecked = v),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          activeThumbColor: AppColors.primaryGreen,
-          title: const Text('Packed Status'),
-          subtitle: const Text('Crop packed in ventilated crates'),
+          activeThumbColor: Colors.white,
+          activeTrackColor: AppColors.leafGreen,
+          title: Text(
+            l10n.productTimeline,
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            l10n.verifiedFarmer,
+            style: GoogleFonts.inter(
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+          ),
           value: _packed,
           onChanged: (v) => setState(() => _packed = v),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          activeThumbColor: AppColors.primaryGreen,
-          title: const Text('Dispatched Status'),
-          subtitle: const Text('Loaded for transit to market hub'),
+          activeThumbColor: Colors.white,
+          activeTrackColor: AppColors.leafGreen,
+          title: Text(
+            l10n.pendingDeliveries,
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            l10n.orders,
+            style: GoogleFonts.inter(
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+          ),
           value: _dispatched,
           onChanged: (v) => setState(() => _dispatched = v),
         ),
@@ -803,39 +1151,106 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Widget _buildBadgesFields() {
+    final l10n = context.l10n;
     return Column(
       children: [
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          activeThumbColor: AppColors.verifiedGreen,
-          title: const Text('Organic Crop Tag'),
-          subtitle: const Text('Grown 100% naturally without synthetic chemicals'),
+          activeThumbColor: Colors.white,
+          activeTrackColor: AppColors.leafGreen,
+          title: Text(
+            l10n.organicCropTag,
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            l10n.organicCropTagSubtitle,
+            style: GoogleFonts.inter(
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+          ),
           value: _isOrganic,
           onChanged: (v) => setState(() => _isOrganic = v),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          activeThumbColor: AppColors.verifiedGreen,
-          title: const Text('Verified Farmer Badge'),
-          subtitle: const Text('Government / FPO farmer verification active'),
+          activeThumbColor: Colors.white,
+          activeTrackColor: AppColors.leafGreen,
+          title: Text(
+            l10n.verifiedFarmerBadge,
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            l10n.verifiedFarmerBadgeSubtitle,
+            style: GoogleFonts.inter(
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+          ),
           value: _isVerifiedFarmer,
           onChanged: (v) => setState(() => _isVerifiedFarmer = v),
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          activeThumbColor: AppColors.primaryGreen,
-          title: const Text('Publish in Marketplace'),
-          subtitle: const Text('Visible to customers in the marketplace'),
+          activeThumbColor: Colors.white,
+          activeTrackColor: AppColors.leafGreen,
+          title: Text(
+            l10n.publishInMarketplace,
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            l10n.publishInMarketplaceSubtitle,
+            style: GoogleFonts.inter(
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+          ),
           value: _isPublished,
           onChanged: (v) => setState(() => _isPublished = v),
         ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: _certificateController,
-          decoration: const InputDecoration(
-            labelText: 'Optional Certificate Info',
-            hintText: 'e.g. Organic India Certificate #IND-ORG-8821',
-            prefixIcon: Icon(Icons.verified_user_outlined),
+        const SizedBox(height: 14),
+        _buildFormFieldWrapper(
+          label: l10n.optionalCertificateInfo,
+          child: TextFormField(
+            controller: _certificateController,
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: AppColors.textPrimary,
+            ),
+            decoration: const InputDecoration(
+              hintText: 'e.g. Organic India Certificate #IND-ORG-8821',
+              prefixIcon: Icon(Icons.verified_user_outlined, color: AppColors.primaryGreen),
+              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        _buildFormFieldWrapper(
+          label: 'Upload Verified Certificate',
+          child: TextFormField(
+            controller: _certificateUrlController,
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: AppColors.textPrimary,
+            ),
+            decoration: InputDecoration(
+              hintText: 'e.g. Certificate URL or upload document',
+              prefixIcon: const Icon(Icons.verified_outlined, color: AppColors.primaryGreen),
+              suffixIcon: IconButton(
+                icon: const Icon(Icons.upload_file, color: AppColors.primaryGreen),
+                tooltip: 'Upload Verified Certificate',
+                onPressed: _pickCertificate,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
           ),
         ),
       ],
@@ -1004,15 +1419,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Widget _buildLivePreviewCard() {
+    final l10n = context.l10n;
     final cropName = _cropNameController.text.trim().isNotEmpty
         ? _cropNameController.text.trim()
-        : 'Crop Name';
+        : l10n.crop;
     final price = _priceController.text.trim().isNotEmpty
         ? _priceController.text.trim()
         : '0';
     final farmerName = _farmerNameController.text.trim().isNotEmpty
         ? _farmerNameController.text.trim()
-        : 'Farmer Name';
+        : l10n.farmer;
 
     return Card(
       elevation: 3,
@@ -1031,7 +1447,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 const Icon(Icons.remove_red_eye, color: AppColors.primaryGreen, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'Live Buyer Marketplace Preview',
+                  '${l10n.marketplace} ${l10n.viewDetails}',
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
@@ -1066,7 +1482,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       ),
                     ),
                     Text(
-                      '₹$price/$_unit',
+                      '₹$price/${LocalizedHelpers.getUnitName(context, _unit)}',
                       style: GoogleFonts.outfit(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
@@ -1077,7 +1493,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Farmer: $farmerName • $_district, $_state',
+                  '${l10n.farmer}: $farmerName • $_district, $_state',
                   style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 8),
@@ -1092,7 +1508,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          '🌱 Organic',
+                          '🌱 ${l10n.organicCertified}',
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             color: AppColors.organicTag,
@@ -1107,7 +1523,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        'Stock: ${_stockController.text.isNotEmpty ? _stockController.text : "0"} $_unit',
+                        '${l10n.availableStock}: ${_stockController.text.isNotEmpty ? _stockController.text : "0"} ${LocalizedHelpers.getUnitName(context, _unit)}',
                         style: GoogleFonts.inter(
                           fontSize: 11,
                           color: AppColors.primaryGreen,
@@ -1126,26 +1542,44 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Widget _buildDescriptionAndPublishSection(bool isEditing) {
+    final l10n = context.l10n;
     return Column(
       children: [
-        TextFormField(
-          controller: _imageUrlController,
-          decoration: const InputDecoration(
-            labelText: 'Crop Image URL',
-            hintText: 'https://images.unsplash.com/...',
-            prefixIcon: Icon(Icons.image_outlined),
+        _buildFormFieldWrapper(
+          label: 'Crop Image URL',
+          child: TextFormField(
+            controller: _imageUrlController,
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: AppColors.textPrimary,
+            ),
+            decoration: const InputDecoration(
+              hintText: 'https://images.unsplash.com/...',
+              prefixIcon: Icon(Icons.image_outlined, color: AppColors.primaryGreen),
+              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+            onChanged: (_) => setState(() {}),
           ),
-          onChanged: (_) => setState(() {}),
         ),
-        const SizedBox(height: 12),
-        TextFormField(
-          controller: _descriptionController,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            labelText: 'Product Description & Soil Quality Notes *',
-            hintText: 'Describe crop freshness, organic soil preparation, packaging details...',
+        const SizedBox(height: 14),
+        _buildFormFieldWrapper(
+          label: '${l10n.crop} ${l10n.viewDetails} *',
+          child: TextFormField(
+            controller: _descriptionController,
+            maxLines: 3,
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: AppColors.textPrimary,
+            ),
+            decoration: InputDecoration(
+              hintText: 'e.g. Fresh organic harvest direct from farm...',
+              hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+            validator: (v) => v == null || v.trim().isEmpty ? l10n.error : null,
           ),
-          validator: (v) => v == null || v.trim().isEmpty ? 'Description is required' : null,
         ),
         const SizedBox(height: 24),
         SizedBox(
@@ -1161,10 +1595,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 : Icon(isEditing ? Icons.save_rounded : Icons.publish_rounded, size: 22),
             label: Text(
               _isSaving
-                  ? 'SAVING PRODUCT...'
+                  ? l10n.loading.toUpperCase()
                   : (isEditing
-                      ? 'UPDATE PRODUCT IN MARKETPLACE'
-                      : 'SUBMIT & PUBLISH TO MARKETPLACE'),
+                      ? '${l10n.edit} ${l10n.marketplace}'.toUpperCase()
+                      : l10n.listCropForSale.toUpperCase()),
               style: GoogleFonts.outfit(
                 fontWeight: FontWeight.bold,
                 fontSize: 15,
@@ -1185,54 +1619,84 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Widget _buildTotalHarvestField() {
-    return TextFormField(
-      controller: _quantityController,
-      keyboardType: TextInputType.number,
-      decoration: const InputDecoration(
-        labelText: 'Harvest Qty *',
-        hintText: 'e.g. 100',
+    final l10n = context.l10n;
+    return _buildFormFieldWrapper(
+      label: '${l10n.harvestQty} *',
+      child: TextFormField(
+        controller: _quantityController,
+        keyboardType: TextInputType.number,
+        style: GoogleFonts.inter(
+          fontWeight: FontWeight.bold,
+          fontSize: 15,
+          color: AppColors.textPrimary,
+        ),
+        decoration: InputDecoration(
+          hintText: 'e.g. 100',
+          hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        ),
+        validator: (v) {
+          if (v == null || v.trim().isEmpty) return l10n.error;
+          final n = double.tryParse(v.trim());
+          if (n == null || n <= 0) return l10n.error;
+          return null;
+        },
       ),
-      validator: (v) {
-        if (v == null || v.trim().isEmpty) return 'Required';
-        final n = double.tryParse(v.trim());
-        if (n == null || n <= 0) return 'Must be > 0';
-        return null;
-      },
     );
   }
 
   Widget _buildStockField() {
-    return TextFormField(
-      controller: _stockController,
-      keyboardType: TextInputType.number,
-      decoration: const InputDecoration(
-        labelText: 'Available Stock *',
-        hintText: 'e.g. 100',
+    final l10n = context.l10n;
+    return _buildFormFieldWrapper(
+      label: '${l10n.availableStock} *',
+      child: TextFormField(
+        controller: _stockController,
+        keyboardType: TextInputType.number,
+        style: GoogleFonts.inter(
+          fontWeight: FontWeight.bold,
+          fontSize: 15,
+          color: AppColors.textPrimary,
+        ),
+        decoration: InputDecoration(
+          hintText: 'e.g. 50',
+          hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        ),
+        validator: (v) {
+          if (v == null || v.trim().isEmpty) return l10n.error;
+          final n = double.tryParse(v.trim());
+          if (n == null || n < 0) return l10n.error;
+          return null;
+        },
       ),
-      validator: (v) {
-        if (v == null || v.trim().isEmpty) return 'Required';
-        final n = double.tryParse(v.trim());
-        if (n == null || n < 0) return 'Must be >= 0';
-        return null;
-      },
     );
   }
 
   Widget _buildPriceField() {
-    return TextFormField(
-      controller: _priceController,
-      keyboardType: TextInputType.number,
-      decoration: const InputDecoration(
-        labelText: 'Price / Unit (₹) *',
-        hintText: 'e.g. 35',
+    final l10n = context.l10n;
+    return _buildFormFieldWrapper(
+      label: '${l10n.pricePerUnitLabel} (₹) *',
+      child: TextFormField(
+        controller: _priceController,
+        keyboardType: TextInputType.number,
+        style: GoogleFonts.inter(
+          fontWeight: FontWeight.bold,
+          fontSize: 15,
+          color: AppColors.textPrimary,
+        ),
+        decoration: InputDecoration(
+          hintText: 'e.g. 40',
+          hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        ),
+        onChanged: (_) => setState(() {}),
+        validator: (v) {
+          if (v == null || v.trim().isEmpty) return l10n.error;
+          final n = double.tryParse(v.trim());
+          if (n == null || n < 0) return l10n.error;
+          return null;
+        },
       ),
-      onChanged: (_) => setState(() {}),
-      validator: (v) {
-        if (v == null || v.trim().isEmpty) return 'Required';
-        final n = double.tryParse(v.trim());
-        if (n == null || n < 0) return 'Must be >= 0';
-        return null;
-      },
     );
   }
 
@@ -1242,7 +1706,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       style: GoogleFonts.outfit(
         fontWeight: FontWeight.bold,
         fontSize: 17,
-        color: AppColors.textPrimary,
+        color: Colors.white,
       ),
     );
   }

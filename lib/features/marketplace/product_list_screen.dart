@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/india_locations.dart';
+import '../../core/localization/localized_helpers.dart';
 import '../../data/models/product_model.dart';
+import '../../data/models/user_model.dart';
 import '../../data/repositories/cart_repository.dart';
 import '../../data/repositories/product_repository.dart';
 import '../../core/widgets/responsive_center.dart';
@@ -36,9 +38,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   @override
   Widget build(BuildContext context) {
     final products = ref.watch(productsProvider);
+    final l10n = context.l10n;
 
     final filteredProducts = products.where((p) {
       if (!p.isPublished) return false;
+      if (p.certificationStatus != VerificationStatus.verified) return false;
       if (_selectedCategory != 'All' && p.category != _selectedCategory) {
         return false;
       }
@@ -80,7 +84,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Crop Marketplace',
+          '${l10n.crop} ${l10n.marketplace}',
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: AppColors.primaryGreen,
@@ -91,10 +95,25 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         maxWidth: 1400,
         child: Column(
           children: [
-            // Filter & Search Header Card
+            // Filter & Search Header Card (Frosted Half-White)
             Container(
-              color: Colors.white,
+              margin: const EdgeInsets.fromLTRB(16, 8, 16, 6),
               padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.90),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.35),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
               child: Column(
                 children: [
                   // Nearby Farmers Banner
@@ -132,7 +151,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              '📍 Search Farmers by Distance Radius (5, 10, 20 km)',
+                              l10n.nearbyFarmersBannerTitle,
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
@@ -155,7 +174,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     controller: _searchController,
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
-                      hintText: 'Search by crop, farmer, district, state...',
+                      hintText: l10n.searchPlaceholder,
                       prefixIcon: const Icon(
                         Icons.search,
                         color: AppColors.primaryGreen,
@@ -179,9 +198,10 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                       children: [
                         // Category Filter
                         _buildDropdownFilter(
-                          label: 'Category',
+                          label: l10n.category,
                           value: _selectedCategory,
                           items: _categories,
+                          isCategory: true,
                           onChanged: (val) =>
                               setState(() => _selectedCategory = val!),
                         ),
@@ -189,7 +209,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
 
                         // State Filter
                         _buildDropdownFilter(
-                          label: 'State',
+                          label: l10n.state,
                           value: _selectedState,
                           items: [
                             'All',
@@ -209,7 +229,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         // District Filter
                         if (_selectedState != 'All')
                           _buildDropdownFilter(
-                            label: 'District',
+                            label: l10n.district,
                             value: _selectedDistrict,
                             items: [
                               'All',
@@ -240,7 +260,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            'No crops match your filter',
+                            l10n.noDataFound,
                             style: GoogleFonts.outfit(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -275,8 +295,10 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     required String label,
     required String value,
     required List<String> items,
+    bool isCategory = false,
     required ValueChanged<String?> onChanged,
   }) {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
@@ -296,7 +318,12 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
             color: AppColors.primaryGreen,
           ),
           items: items
-              .map((i) => DropdownMenuItem(value: i, child: Text('$label: $i')))
+              .map((i) => DropdownMenuItem(
+                    value: i,
+                    child: Text(
+                      '$label: ${i == 'All' ? l10n.allCommodities : (isCategory ? LocalizedHelpers.getCategoryName(context, i) : i)}',
+                    ),
+                  ))
               .toList(),
           onChanged: onChanged,
         ),
@@ -308,6 +335,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     BuildContext context,
     ProductModel product,
   ) {
+    final l10n = context.l10n;
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -360,7 +388,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         ),
                       ),
                       child: Text(
-                        '🌱 Organic',
+                        '🌱 ${l10n.organicCertified}',
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -383,7 +411,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '✓ Verified',
+                        '✓ ${l10n.verifiedFarmer}',
                         style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -413,7 +441,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     ),
                   ),
                   Text(
-                    'Variety: ${product.variety}',
+                    '${l10n.varietyStock}: ${product.variety}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
@@ -490,15 +518,24 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         ),
                       ),
                       const Spacer(),
-                      Text(
-                        'Stock: ${product.availableStock.toInt()} ${product.unit}',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
+                      Flexible(
+                        child: Text(
+                          product.availableStock <= 0
+                              ? 'OUT OF STOCK'
+                              : '${l10n.availableStock}: ${product.availableStock.toInt()} ${LocalizedHelpers.getUnitName(context, product.unit)}',
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: product.availableStock <= 0 ? FontWeight.bold : FontWeight.normal,
+                            color: product.availableStock <= 0
+                                ? Colors.red.shade700
+                                : AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 10),
 
                   // Price & Quick Add Button
@@ -507,7 +544,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     children: [
                       Expanded(
                         child: Text(
-                          '₹${product.pricePerUnit.toStringAsFixed(0)}/${product.unit}',
+                          '₹${product.pricePerUnit.toStringAsFixed(0)}/${LocalizedHelpers.getUnitName(context, product.unit)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.outfit(
@@ -519,31 +556,35 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                       ),
                       const SizedBox(width: 4),
                       InkWell(
-                        onTap: () {
-                          ref
-                              .read(cartProvider.notifier)
-                              .addToCart(product, 1);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Added "${product.name}" to cart!',
-                              ),
-                              backgroundColor: AppColors.primaryGreen,
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-                        },
+                        onTap: product.availableStock <= 0
+                            ? null
+                            : () {
+                                ref
+                                    .read(cartProvider.notifier)
+                                    .addToCart(product, 1);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      l10n.addedToCartSnackbar,
+                                    ),
+                                    backgroundColor: AppColors.primaryGreen,
+                                    duration: const Duration(seconds: 1),
+                                  ),
+                                );
+                              },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryGreen,
+                            color: product.availableStock <= 0
+                                ? Colors.grey
+                                : AppColors.primaryGreen,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            '+ Add',
+                            product.availableStock <= 0 ? 'Out of Stock' : '+ ${l10n.addToCart}',
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,

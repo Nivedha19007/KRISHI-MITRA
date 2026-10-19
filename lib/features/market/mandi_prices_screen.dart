@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import '../../core/config/app_config.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/india_locations.dart';
-import '../../core/localization/locale_provider.dart';
+import '../../core/localization/localized_helpers.dart';
 import '../../core/widgets/responsive_center.dart';
 import '../../data/models/mandi_price_model.dart';
 import '../../data/repositories/market_repository.dart';
@@ -86,7 +85,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh Mandi Prices',
+            tooltip: l10n.mandiPrices,
             onPressed: () {
               ref.invalidate(
                 liveMandiPricesProvider(
@@ -131,7 +130,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Official Mandi Price Search',
+                                l10n.mandiPrices,
                                 style: GoogleFonts.outfit(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 18,
@@ -148,9 +147,9 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                         DropdownButtonFormField<String>(
                           initialValue: _selectedCountry,
                           isExpanded: true,
-                          decoration: const InputDecoration(
-                            labelText: 'Country',
-                            prefixIcon: Icon(Icons.public),
+                          decoration: InputDecoration(
+                            labelText: l10n.state,
+                            prefixIcon: const Icon(Icons.public),
                           ),
                           items: const [
                             DropdownMenuItem(
@@ -169,15 +168,15 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                               child: DropdownButtonFormField<String>(
                                 initialValue: currentState,
                                 isExpanded: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'State',
+                                decoration: InputDecoration(
+                                  labelText: l10n.state,
                                 ),
                                 items: stateOptions
                                     .map(
                                       (s) => DropdownMenuItem(
                                         value: s,
                                         child: Text(
-                                          s,
+                                          s == 'All' ? l10n.allCommodities : s,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -198,15 +197,15 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                               child: DropdownButtonFormField<String>(
                                 initialValue: currentDistrict,
                                 isExpanded: true,
-                                decoration: const InputDecoration(
-                                  labelText: 'District',
+                                decoration: InputDecoration(
+                                  labelText: l10n.district,
                                 ),
                                 items: districtOptions
                                     .map(
                                       (d) => DropdownMenuItem(
                                         value: d,
                                         child: Text(
-                                          d,
+                                          d == 'All' ? l10n.allCommodities : d,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -248,16 +247,17 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                             return TextFormField(
                               controller: textEditingController,
                               focusNode: focusNode,
-                              decoration: const InputDecoration(
-                                labelText: 'Crop / Commodity',
-                                prefixIcon: Icon(Icons.eco),
-                                hintText: 'Select or type crop name (e.g. Tomato, Wheat, All)',
+                              decoration: InputDecoration(
+                                labelText: l10n.crop,
+                                prefixIcon: const Icon(Icons.eco),
+                                hintText: '${l10n.cropName}...',
                               ),
                               onChanged: (val) {
                                 final clean = val.trim();
-                                if (clean.isNotEmpty && clean != _selectedCommodity) {
+                                final target = clean.isEmpty ? 'All' : clean;
+                                if (target != _selectedCommodity) {
                                   setState(() {
-                                    _selectedCommodity = clean;
+                                    _selectedCommodity = target;
                                   });
                                 }
                               },
@@ -277,18 +277,26 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withValues(alpha: 0.08),
+                    color: const Color(0xFF0F172A),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color: AppColors.primaryGreen.withValues(alpha: 0.2),
+                      color: const Color(0xFF1E3A8A),
+                      width: 1.2,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
                       const Icon(
                         Icons.account_tree_outlined,
                         size: 20,
-                        color: AppColors.primaryGreen,
+                        color: Colors.white,
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -299,7 +307,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                             style: GoogleFonts.outfit(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.primaryGreen,
+                              color: Colors.white,
                             ),
                           ),
                         ),
@@ -329,6 +337,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
   }
 
   Widget _buildLoadingWidget() {
+    final l10n = context.l10n;
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -341,7 +350,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
               const CircularProgressIndicator(color: AppColors.primaryGreen),
               const SizedBox(height: 16),
               Text(
-                'Fetching live Mandi prices from Government data.gov.in...',
+                l10n.loading,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
                   fontSize: 15,
@@ -357,6 +366,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
   }
 
   Widget _buildErrorWidget(Object error, String currentState, String currentDistrict) {
+    final l10n = context.l10n;
     final message = error.toString().replaceAll('Exception: ', '');
 
     return Card(
@@ -377,7 +387,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Backend Mandi Service Error',
+              l10n.error,
               style: GoogleFonts.outfit(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -386,8 +396,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Failed to fetch live Mandi records from backend server:\n$message\n\n'
-              'Ensure .NET backend is running at ${AppConfig.backendBaseUrl}.',
+              message,
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 fontSize: 14,
@@ -412,7 +421,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                 );
               },
               icon: const Icon(Icons.refresh),
-              label: const Text('Retry Fetch'),
+              label: Text(l10n.ok),
             ),
           ],
         ),
@@ -421,6 +430,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
   }
 
   Widget _buildEmptyStateWidget(String currentState, String currentDistrict) {
+    final l10n = context.l10n;
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -437,23 +447,11 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'No Mandi Price Data Available',
+                l10n.noDataFound,
                 style: GoogleFonts.outfit(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'No official government market arrival records were returned for:\n'
-                '$currentState → $currentDistrict → $_selectedCommodity\n\n'
-                'Try selecting "All" or a different state, district, or crop.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                  height: 1.4,
                 ),
               ),
             ],
@@ -468,6 +466,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
     String currentState,
     String currentDistrict,
   ) {
+    final l10n = context.l10n;
     final primary = prices.first;
     final avgPrice = prices.fold<double>(
           0.0,
@@ -521,7 +520,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          '${prices.length} Reporting Mandi Yard${prices.length > 1 ? "s" : ""}',
+                          '${prices.length} Mandis',
                           style: GoogleFonts.inter(
                             fontSize: 14,
                             color: AppColors.textSecondary,
@@ -552,7 +551,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          'Official AGMARKNET ($dateStr)',
+                          'AGMARKNET ($dateStr)',
                           style: GoogleFonts.inter(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -573,7 +572,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Average Rate Across Mandis',
+                        l10n.mandiRates,
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: AppColors.textSecondary,
@@ -592,7 +591,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                             ),
                           ),
                           Text(
-                            '/kg',
+                            '/${LocalizedHelpers.getUnitName(context, 'kg')}',
                             style: GoogleFonts.inter(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -607,14 +606,14 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        'Equivalent Per Quintal',
+                        l10n.pricePerUnit,
                         style: GoogleFonts.inter(
                           fontSize: 13,
                           color: AppColors.textSecondary,
                         ),
                       ),
                       Text(
-                        '₹${(avgPrice * 100).toStringAsFixed(0)}/q',
+                        '₹${(avgPrice * 100).toStringAsFixed(0)}/${LocalizedHelpers.getUnitName(context, 'quintal')}',
                         style: GoogleFonts.outfit(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -632,11 +631,11 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
 
         // Reporting APMC Mandi Yards List
         Text(
-          'Mandi Price Reports (${prices.length})',
+          '${l10n.mandiRates} (${prices.length})',
           style: GoogleFonts.outfit(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: Colors.white,
           ),
         ),
         const SizedBox(height: 12),
@@ -735,14 +734,14 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Modal Price',
+                              l10n.pricePerUnit,
                               style: GoogleFonts.inter(
                                 fontSize: 13,
                                 color: AppColors.textSecondary,
                               ),
                             ),
                             Text(
-                              '₹${mandi.currentPricePerKg.toStringAsFixed(1)}/kg',
+                              '₹${mandi.currentPricePerKg.toStringAsFixed(1)}/${LocalizedHelpers.getUnitName(context, 'kg')}',
                               style: GoogleFonts.outfit(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
@@ -750,7 +749,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                               ),
                             ),
                             Text(
-                              '₹${modalQuintal.toStringAsFixed(0)} / quintal',
+                              '₹${modalQuintal.toStringAsFixed(0)} / ${LocalizedHelpers.getUnitName(context, 'quintal')}',
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
@@ -762,14 +761,14 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              'Min - Max Range',
+                              'Min - Max',
                               style: GoogleFonts.inter(
                                 fontSize: 13,
                                 color: AppColors.textSecondary,
                               ),
                             ),
                             Text(
-                              '₹${mandi.minPrice.toStringAsFixed(1)} - ₹${mandi.maxPrice.toStringAsFixed(1)}/kg',
+                              '₹${mandi.minPrice.toStringAsFixed(1)} - ₹${mandi.maxPrice.toStringAsFixed(1)}/${LocalizedHelpers.getUnitName(context, 'kg')}',
                               style: GoogleFonts.outfit(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -777,7 +776,7 @@ class _MandiPricesScreenState extends ConsumerState<MandiPricesScreen> {
                               ),
                             ),
                             Text(
-                              '₹${minQuintal.toStringAsFixed(0)} - ₹${maxQuintal.toStringAsFixed(0)} / quintal',
+                              '₹${minQuintal.toStringAsFixed(0)} - ₹${maxQuintal.toStringAsFixed(0)} / ${LocalizedHelpers.getUnitName(context, 'quintal')}',
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,

@@ -20,4 +20,6 @@ public interface IOtpService
 {
     Task<SendOtpResult> SendOtpAsync(string rawPhoneNumber, CancellationToken ct = default);
     Task<VerifyOtpResult> VerifyOtpAsync(string rawPhoneNumber, string otpCode, CancellationToken ct = default);
+    Task<SendOtpResult> SendEmailOtpAsync(string rawEmail, CancellationToken ct = default);
+    Task<VerifyOtpResult> VerifyEmailOtpAsync(string rawEmail, string otpCode, CancellationToken ct = default);
 }

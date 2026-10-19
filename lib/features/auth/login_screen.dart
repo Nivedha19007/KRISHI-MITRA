@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,15 +8,18 @@ import '../../core/localization/locale_provider.dart';
 import '../../core/widgets/responsive_center.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
-import '../home/main_navigation_screen.dart';
 import 'admin_login_screen.dart';
+
 import 'otp_verification_screen.dart';
 import 'register_screen.dart';
+import 'registration_confirmation_screen.dart' show LoginHint;
+import '../onboarding/welcome_screen.dart';
 
 enum CustomerAuthMode { email, phone }
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  final LoginHint? loginHint;
+  const LoginScreen({super.key, this.loginHint});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -23,7 +27,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   UserRole _selectedRole = UserRole.farmer;
-  CustomerAuthMode _customerAuthMode = CustomerAuthMode.email;
+  CustomerAuthMode _customerAuthMode = CustomerAuthMode.phone;
 
   final _farmerNameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -36,16 +40,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final user =
-          await ref.read(currentUserProvider.notifier).restoreSession();
-      if (user != null && user.uid.isNotEmpty && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-        );
-      }
-    });
+    if (widget.loginHint != null) {
+      _selectedRole = widget.loginHint!.role;
+      _phoneController.text = widget.loginHint!.phone;
+    }
   }
 
   @override
@@ -61,13 +59,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // EMAIL LOGIN (Customers)
   // ============================================================
 
-  void _handleEmailLogin() async {
+  void _handleSendEmailOtpLogin() async {
     final email = _emailController.text.trim();
-    final password = _passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
+    if (email.isEmpty) {
       setState(() {
-        _errorMessage = 'Please enter both email and password.';
+        _errorMessage = 'Please enter your registered email address.';
       });
       return;
     }
@@ -78,18 +75,69 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     try {
-      await ref.read(currentUserProvider.notifier).loginWithEmail(
-            email: email,
-            password: password,
-            role: _selectedRole,
-          );
+      final querySnap = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: email)
+          .get();
 
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
-        );
+      Map<String, dynamic>? userData;
+      if (querySnap.docs.isNotEmpty) {
+        userData = querySnap.docs.first.data();
+      } else {
+        final lowerSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .where('email', isEqualTo: email.toLowerCase())
+            .get();
+        if (lowerSnap.docs.isNotEmpty) {
+          userData = lowerSnap.docs.first.data();
+        }
       }
+
+      if (userData == null) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = 'Customer account not found. Please register first.';
+          });
+        }
+        return;
+      }
+
+      final phone = (userData['phone'] as String?) ?? email;
+
+      await ref.read(currentUserProvider.notifier).sendCustomerEmailOtp(
+            email: email,
+            phoneNumber: phone,
+            onCodeSent: (verificationId) {
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                });
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => OtpVerificationScreen(
+                      phoneNumber: phone,
+                      email: email,
+                      isEmailOtp: true,
+                      verificationId: verificationId,
+                      role: UserRole.customer,
+                      isRegistration: false,
+                    ),
+                  ),
+                );
+              }
+            },
+            onVerificationFailed: (error) {
+              if (mounted) {
+                setState(() {
+                  _isLoading = false;
+                  _errorMessage = error.message ?? 'Failed to generate OTP. Please try again.';
+                });
+              }
+            },
+          );
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -126,6 +174,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _isLoading = true;
       _errorMessage = null;
     });
+
 
     try {
       await ref.read(currentUserProvider.notifier).sendPhoneOtp(
@@ -176,20 +225,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final l10n = context.l10n;
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.primaryGreen,
-              AppColors.leafGreen,
-              Color(0xFF1B5E20),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 8.0, top: 4.0),
+          child: IconButton(
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
+            tooltip: 'Back to Welcome',
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.black.withValues(alpha: 0.25),
+              shape: const CircleBorder(),
+            ),
+            onPressed: () {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+                );
+              }
+            },
           ),
         ),
-        child: SafeArea(
-          child: Center(
+      ),
+      body: SafeArea(
+        child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(20.0),
               child: ResponsiveCenter(
@@ -239,7 +304,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'Select App Language',
+                                  l10n.selectAppLanguage,
                                   style: GoogleFonts.outfit(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 14,
@@ -259,6 +324,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 _buildLangChip(ref, 'తెలుగు', 'te', currentLocale),
                                 _buildLangChip(ref, 'ಕನ್ನಡ', 'kn', currentLocale),
                                 _buildLangChip(ref, 'മലയാളം', 'ml', currentLocale),
+                                _buildLangChip(ref, 'मराठी', 'mr', currentLocale),
                               ],
                             ),
                           ],
@@ -279,7 +345,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
-                              'Select Module',
+                              l10n.selectModule,
                               style: GoogleFonts.outfit(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -294,7 +360,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ButtonSegment(
                                   value: UserRole.farmer,
                                   label: Text(
-                                    'Farmer 🌾',
+                                    l10n.farmerRoleChip,
                                     style: GoogleFonts.inter(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
@@ -304,7 +370,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ButtonSegment(
                                   value: UserRole.customer,
                                   label: Text(
-                                    'Customer 🛒',
+                                    l10n.customerRoleChip,
                                     style: GoogleFonts.inter(
                                       fontSize: 15,
                                       fontWeight: FontWeight.bold,
@@ -371,7 +437,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             // FARMER FORM (Name + Mobile OTP Only, Button: LOGIN)
                             if (_selectedRole == UserRole.farmer) ...[
                               Text(
-                                'Farmer Login (Mobile OTP)',
+                                l10n.farmerLoginTitle,
                                 style: GoogleFonts.outfit(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -380,7 +446,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'Enter your registered name and mobile number.',
+                                l10n.farmerLoginSubtitle,
                                 style: GoogleFonts.inter(
                                   fontSize: 13,
                                   color: AppColors.textSecondary,
@@ -390,10 +456,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                               TextField(
                                 controller: _farmerNameController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Farmer Name',
-                                  hintText: 'Enter your registered name',
-                                  prefixIcon: Icon(Icons.person_outline),
+                                decoration: InputDecoration(
+                                  labelText: l10n.farmerNameLabel,
+                                  hintText: l10n.farmerNameHint,
+                                  prefixIcon: const Icon(Icons.person_outline),
                                 ),
                               ),
                               const SizedBox(height: 14),
@@ -402,7 +468,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 controller: _phoneController,
                                 keyboardType: TextInputType.phone,
                                 decoration: InputDecoration(
-                                  labelText: 'Mobile Number',
+                                  labelText: l10n.mobileNumberLabel,
                                   hintText: '98765 43210',
                                   prefixIcon: Padding(
                                     padding: const EdgeInsets.symmetric(
@@ -443,7 +509,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           ),
                                         )
                                       : Text(
-                                          'LOGIN',
+                                          l10n.login.toUpperCase(),
                                           style: GoogleFonts.outfit(
                                             fontSize: 18,
                                             fontWeight: FontWeight.bold,
@@ -455,13 +521,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ]
 
-                            // CUSTOMER FORM (Email & Password OR Mobile OTP, Button: LOGIN)
+                            // CUSTOMER FORM (Email OTP OR Mobile OTP)
                             else ...[
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   ChoiceChip(
-                                    label: const Text('Email & Password'),
+                                    label: Text(l10n.emailOtpTab),
                                     selected: _customerAuthMode ==
                                         CustomerAuthMode.email,
                                     selectedColor: AppColors.primaryGreen,
@@ -483,7 +549,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ),
                                   const SizedBox(width: 10),
                                   ChoiceChip(
-                                    label: const Text('Mobile OTP'),
+                                    label: Text(l10n.mobileOtpTab),
                                     selected: _customerAuthMode ==
                                         CustomerAuthMode.phone,
                                     selectedColor: AppColors.primaryGreen,
@@ -512,22 +578,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 TextField(
                                   controller: _emailController,
                                   keyboardType: TextInputType.emailAddress,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Email Address',
+                                  decoration: InputDecoration(
+                                    labelText: l10n.email,
                                     hintText: 'customer@gmail.com',
-                                    prefixIcon: Icon(Icons.email_outlined),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                TextField(
-                                  controller: _passwordController,
-                                  obscureText: true,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Password',
-                                    prefixIcon: Icon(Icons.lock_outline),
+                                    prefixIcon: const Icon(Icons.email_outlined),
                                   ),
                                 ),
                                 const SizedBox(height: 24),
+
 
                                 SizedBox(
                                   height: 50,
@@ -539,7 +597,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       ),
                                     ),
                                     onPressed:
-                                        _isLoading ? null : _handleEmailLogin,
+                                        _isLoading ? null : _handleSendEmailOtpLogin,
                                     child: _isLoading
                                         ? const SizedBox(
                                             width: 22,
@@ -550,7 +608,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                             ),
                                           )
                                         : Text(
-                                            'LOGIN',
+                                            'SEND EMAIL OTP',
                                             style: GoogleFonts.outfit(
                                               fontSize: 18,
                                               fontWeight: FontWeight.bold,
@@ -560,12 +618,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           ),
                                   ),
                                 ),
-                              ] else ...[
+                              ]
+ else ...[
                                 TextField(
                                   controller: _phoneController,
                                   keyboardType: TextInputType.phone,
                                   decoration: InputDecoration(
-                                    labelText: 'Mobile Number',
+                                    labelText: l10n.mobileNumberLabel,
                                     hintText: '98765 43210',
                                     prefixIcon: Padding(
                                       padding: const EdgeInsets.symmetric(
@@ -606,7 +665,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                             ),
                                           )
                                         : Text(
-                                            'LOGIN',
+                                            l10n.login.toUpperCase(),
                                             style: GoogleFonts.outfit(
                                               fontSize: 18,
                                               fontWeight: FontWeight.bold,
@@ -624,13 +683,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             const SizedBox(height: 8),
 
                             // REGISTER LINK
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 Text(
                                   _selectedRole == UserRole.farmer
-                                      ? "New farmer? "
-                                      : "Don't have an account? ",
+                                      ? l10n.newFarmerPrompt
+                                      : l10n.dontHaveAccountPrompt,
                                   style: GoogleFonts.inter(
                                     color: AppColors.textSecondary,
                                     fontSize: 14,
@@ -646,7 +706,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     );
                                   },
                                   child: Text(
-                                    'Create Account',
+                                    l10n.createAccount,
                                     style: GoogleFonts.outfit(
                                       color: AppColors.primaryGreen,
                                       fontWeight: FontWeight.bold,
@@ -678,7 +738,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         size: 16,
                       ),
                       label: Text(
-                        'Admin Portal Login',
+                        l10n.adminPortalLogin,
                         style: GoogleFonts.inter(
                           color: Colors.white70,
                           fontSize: 13,
@@ -694,8 +754,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildLangChip(

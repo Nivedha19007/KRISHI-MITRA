@@ -1,16 +1,285 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../../core/constants/app_colors.dart';
+import '../../core/constants/india_locations.dart';
+import '../../core/localization/localized_helpers.dart';
+import '../../core/widgets/responsive_center.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/localization/locale_provider.dart';
 import '../auth/login_screen.dart';
-
-import '../../core/widgets/responsive_center.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
+
+  void _showEditPhoneDialog(BuildContext context, WidgetRef ref, UserModel user) {
+    final l10n = context.l10n;
+    final controller = TextEditingController(text: user.phone);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            user.phone.isNotEmpty ? 'Edit Phone Number' : 'Add Phone Number',
+            style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: controller,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: l10n.phone,
+                    hintText: '+91 98765 43210',
+                    prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.primaryGreen),
+                    border: const OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    final clean = (value ?? '').replaceAll(RegExp(r'\D'), '');
+                    if (clean.length < 10) {
+                      return 'Please enter a valid 10-digit phone number';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.cancel),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                var newPhone = controller.text.trim();
+                if (!newPhone.startsWith('+')) {
+                  final digits = newPhone.replaceAll(RegExp(r'\D'), '');
+                  if (digits.length == 10) {
+                    newPhone = '+91 $digits';
+                  }
+                }
+                final updatedUser = user.copyWith(phone: newPhone);
+                await ref.read(currentUserProvider.notifier).updateProfile(updatedUser);
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Phone number updated successfully!'),
+                      backgroundColor: AppColors.primaryGreen,
+                    ),
+                  );
+                }
+              },
+              child: Text(l10n.save),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditLocationDialog(BuildContext context, WidgetRef ref, UserModel user) {
+    final l10n = context.l10n;
+    String selectedState = user.state.trim().isNotEmpty ? user.state.trim() : 'Tamil Nadu';
+    if (!IndiaLocations.statesAndUTs.contains(selectedState)) {
+      selectedState = 'Tamil Nadu';
+    }
+
+    List<String> availableDistricts = IndiaLocations.districtsByState[selectedState] ?? ['Coimbatore'];
+    String selectedDistrict = user.district.trim().isNotEmpty ? user.district.trim() : availableDistricts.first;
+    if (!availableDistricts.contains(selectedDistrict)) {
+      availableDistricts = [selectedDistrict, ...availableDistricts];
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Text(
+                'Edit State & District',
+                style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.state,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      key: ValueKey('state_$selectedState'),
+                      initialValue: selectedState,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        prefixIcon: Icon(Icons.map_outlined, color: AppColors.primaryGreen),
+                      ),
+                      items: IndiaLocations.statesAndUTs.map((st) {
+                        return DropdownMenuItem<String>(
+                          value: st,
+                          child: Text(st, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      onChanged: (newSt) {
+                        if (newSt != null) {
+                          setDialogState(() {
+                            selectedState = newSt;
+                            availableDistricts = IndiaLocations.districtsByState[newSt] ?? ['Main District'];
+                            selectedDistrict = availableDistricts.first;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      l10n.district,
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<String>(
+                      key: ValueKey('dist_${selectedState}_$selectedDistrict'),
+                      initialValue: availableDistricts.contains(selectedDistrict)
+                          ? selectedDistrict
+                          : availableDistricts.first,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        prefixIcon: Icon(Icons.location_city_outlined, color: AppColors.primaryGreen),
+                      ),
+                      items: availableDistricts.map((dist) {
+                        return DropdownMenuItem<String>(
+                          value: dist,
+                          child: Text(dist, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      onChanged: (newDist) {
+                        if (newDist != null) {
+                          setDialogState(() {
+                            selectedDistrict = newDist;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(l10n.cancel),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGreen,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () async {
+                    final updatedUser = user.copyWith(
+                      state: selectedState,
+                      district: selectedDistrict,
+                    );
+                    await ref.read(currentUserProvider.notifier).updateProfile(updatedUser);
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Location updated successfully!'),
+                          backgroundColor: AppColors.primaryGreen,
+                        ),
+                      );
+                    }
+                  },
+                  child: Text(l10n.save),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showEditAddressDialog(BuildContext context, WidgetRef ref, UserModel user) {
+    final l10n = context.l10n;
+    final controller = TextEditingController(
+      text: user.deliveryAddress.isNotEmpty ? user.deliveryAddress : user.fullAddress,
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            user.fullAddress.isNotEmpty ? l10n.editAddress : l10n.addAddress,
+            style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: l10n.address,
+                  hintText: 'Enter complete delivery address (Door No, Street, City)',
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.cancel),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGreen,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                final newAddr = controller.text.trim();
+                final updatedUser = user.copyWith(deliveryAddress: newAddr);
+                await ref.read(currentUserProvider.notifier).updateProfile(updatedUser);
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: Text(l10n.save),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -68,14 +337,14 @@ class ProfileScreen extends ConsumerWidget {
                       style: GoogleFonts.outfit(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
+                        color: const Color(0xFF0F172A),
                       ),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       '${user.role.name.toUpperCase()} MODULE • ${user.district}, ${user.state}',
                       style: GoogleFonts.inter(
-                        color: AppColors.textSecondary,
+                        color: const Color(0xFF334155),
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
                       ),
@@ -124,33 +393,90 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                       ),
                       subtitle: Text(
-                        user.phone,
+                        user.phone.isNotEmpty ? user.phone : l10n.noDataFound,
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                           color: AppColors.textPrimary,
                         ),
                       ),
+                      trailing: TextButton.icon(
+                        onPressed: () => _showEditPhoneDialog(context, ref, user),
+                        icon: Icon(
+                          user.phone.isNotEmpty ? Icons.edit_outlined : Icons.add_circle_outline,
+                          size: 18,
+                          color: AppColors.primaryGreen,
+                        ),
+                        label: Text(
+                          user.phone.isNotEmpty ? 'Edit Phone' : 'Add Phone',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
                     ),
+                    if (user.email.isNotEmpty && !user.email.endsWith('@agriconnect.org')) ...[
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(
+                          Icons.email_outlined,
+                          color: AppColors.primaryGreen,
+                        ),
+                        title: Text(
+                          l10n.email,
+                          style: GoogleFonts.inter(
+                            fontSize: 15,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        subtitle: Text(
+                          user.email,
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ],
+
                     const Divider(height: 1),
                     ListTile(
                       leading: const Icon(
-                        Icons.email_outlined,
+                        Icons.home_outlined,
                         color: AppColors.primaryGreen,
                       ),
                       title: Text(
-                        l10n.email,
+                        l10n.address,
                         style: GoogleFonts.inter(
                           fontSize: 15,
                           color: AppColors.textSecondary,
                         ),
                       ),
                       subtitle: Text(
-                        user.email,
+                        user.fullAddress.isNotEmpty ? user.fullAddress : l10n.noDataFound,
                         style: GoogleFonts.inter(
                           fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                          fontSize: 15,
                           color: AppColors.textPrimary,
+                        ),
+                      ),
+                      trailing: TextButton.icon(
+                        onPressed: () => _showEditAddressDialog(context, ref, user),
+                        icon: Icon(
+                          user.fullAddress.isNotEmpty ? Icons.edit_outlined : Icons.add_circle_outline,
+                          size: 18,
+                          color: AppColors.primaryGreen,
+                        ),
+                        label: Text(
+                          user.fullAddress.isNotEmpty ? l10n.editAddress : l10n.addAddress,
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ),
@@ -175,6 +501,22 @@ class ProfileScreen extends ConsumerWidget {
                           color: AppColors.textPrimary,
                         ),
                       ),
+                      trailing: TextButton.icon(
+                        onPressed: () => _showEditLocationDialog(context, ref, user),
+                        icon: const Icon(
+                          Icons.edit_outlined,
+                          size: 18,
+                          color: AppColors.primaryGreen,
+                        ),
+                        label: Text(
+                          'Edit Location',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryGreen,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
                     ),
                     if (user.role == UserRole.farmer) ...[
                       const Divider(height: 1),
@@ -191,7 +533,7 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                         ),
                         subtitle: Text(
-                          user.farmerType,
+                          LocalizedHelpers.getFarmerTypeName(context, user.farmerType),
                           style: GoogleFonts.inter(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -222,23 +564,20 @@ class ProfileScreen extends ConsumerWidget {
                             size: 22,
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            'Choose your language',
-                            style: GoogleFonts.outfit(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              color: AppColors.textPrimary,
+                          Expanded(
+                            child: Text(
+                              l10n.selectAppLanguage,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.outfit(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      Text(
-                        'Select your preferred language anytime',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
+
                       const SizedBox(height: 14),
                       Wrap(
                         spacing: 8,
@@ -251,11 +590,6 @@ class ProfileScreen extends ConsumerWidget {
                           _buildLangChip(ref, 'ಕನ್ನಡ (Kannada)', 'kn', currentLocale),
                           _buildLangChip(ref, 'മലയാളം (Malayalam)', 'ml', currentLocale),
                           _buildLangChip(ref, 'मराठी (Marathi)', 'mr', currentLocale),
-                          _buildLangChip(ref, 'ગુજરાતી (Gujarati)', 'gu', currentLocale),
-                          _buildLangChip(ref, 'ਪੰਜਾਬੀ (Punjabi)', 'pa', currentLocale),
-                          _buildLangChip(ref, 'বাংলা (Bengali)', 'bn', currentLocale),
-                          _buildLangChip(ref, 'ଓଡ଼ିଆ (Odia)', 'or', currentLocale),
-                          _buildLangChip(ref, 'অসমীয়া (Assamese)', 'as', currentLocale),
                         ],
                       ),
                     ],

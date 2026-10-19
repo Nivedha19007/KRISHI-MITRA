@@ -197,8 +197,11 @@ class PublicProductTimelineScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -243,7 +246,7 @@ class PublicProductTimelineScreen extends ConsumerWidget {
                                 style: GoogleFonts.inter(
                                   color: AppColors.textPrimary,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                                  fontSize: 12,
                                 ),
                               ),
                             ),
@@ -409,7 +412,7 @@ class PublicProductTimelineScreen extends ConsumerWidget {
                     style: GoogleFonts.outfit(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -417,7 +420,7 @@ class PublicProductTimelineScreen extends ConsumerWidget {
                     'Farmer-verified chronological journey from seed sowing to customer delivery:',
                     style: GoogleFonts.inter(
                       fontSize: 14,
-                      color: AppColors.textSecondary,
+                      color: Colors.white.withValues(alpha: 0.85),
                     ),
                   ),
                   const SizedBox(height: 20),

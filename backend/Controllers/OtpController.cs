@@ -71,4 +71,54 @@ public class OtpController : ControllerBase
             CustomToken = customToken
         });
     }
+
+    [HttpPost("send-email")]
+    public async Task<IActionResult> SendEmailOtp([FromBody] SendEmailOtpRequest request, CancellationToken ct)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new ApiErrorResponse { Message = "Registered email address is required." });
+        }
+
+        var result = await _otpService.SendEmailOtpAsync(request.Email, ct);
+
+        if (!result.Success)
+        {
+            return StatusCode(result.StatusCode, new ApiErrorResponse { Message = result.Message });
+        }
+
+        return Ok(new SendOtpResponse
+        {
+            Success = true,
+            Message = result.Message,
+            ExpirySeconds = result.ExpirySeconds,
+            CooldownSeconds = result.CooldownSeconds
+        });
+    }
+
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmailOtp([FromBody] VerifyEmailOtpRequest request, CancellationToken ct)
+    {
+        if (request == null || string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Otp))
+        {
+            return BadRequest(new ApiErrorResponse { Message = "Email address and OTP code are required." });
+        }
+
+        var result = await _otpService.VerifyEmailOtpAsync(request.Email, request.Otp, ct);
+
+        if (!result.Success)
+        {
+            return StatusCode(result.StatusCode, new ApiErrorResponse { Message = result.Message });
+        }
+
+        string tokenTarget = request.Email.Trim();
+        string? customToken = await _firebaseAuthService.CreateCustomTokenAsync(tokenTarget, ct);
+
+        return Ok(new VerifyOtpResponse
+        {
+            Success = true,
+            Message = result.Message,
+            CustomToken = customToken
+        });
+    }
 }

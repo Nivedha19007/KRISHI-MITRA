@@ -4,14 +4,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/locale_provider.dart';
 import '../../core/widgets/responsive_center.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../home/main_navigation_screen.dart';
 import 'login_screen.dart';
+import 'registration_confirmation_screen.dart' show LoginHint;
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
   final String phoneNumber;
+  final String? email;
+  final bool isEmailOtp;
   final String verificationId;
   final UserRole role;
   final String? farmerName;
@@ -21,12 +25,15 @@ class OtpVerificationScreen extends ConsumerStatefulWidget {
   const OtpVerificationScreen({
     super.key,
     required this.phoneNumber,
+    this.email,
+    this.isEmailOtp = false,
     required this.verificationId,
     required this.role,
     this.farmerName,
     this.isRegistration = false,
     this.registrationData,
   });
+
 
   @override
   ConsumerState<OtpVerificationScreen> createState() =>
@@ -105,6 +112,66 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     });
 
     try {
+      if (widget.isEmailOtp) {
+        // 1. Verify Email OTP via backend
+        await ref.read(currentUserProvider.notifier).verifyEmailOtp(
+              email: widget.email!,
+              phoneNumber: widget.phoneNumber,
+              otpCode: otp,
+            );
+
+        if (widget.isRegistration) {
+          // 2. Create customer account in Firestore ONLY after successful OTP verification!
+          final reg = widget.registrationData ?? {};
+          await ref.read(currentUserProvider.notifier).registerDirect(
+                name: reg['name'] ?? '',
+                phone: reg['phone'] ?? widget.phoneNumber,
+                role: widget.role,
+                state: reg['state'] ?? 'Tamil Nadu',
+                district: reg['district'] ?? 'Coimbatore',
+                village: reg['village'] ?? '',
+                deliveryAddress: reg['deliveryAddress'] ?? '',
+                farmerType: reg['farmerType'] ?? 'Organic Farmer',
+                email: reg['email'] ?? widget.email!,
+                password: reg['password'] ?? '',
+              );
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✓ Account created! Please continue to login.'),
+                backgroundColor: AppColors.primaryGreen,
+                duration: Duration(seconds: 4),
+              ),
+            );
+
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (_) => LoginScreen(
+                  loginHint: LoginHint(
+                    role: widget.role,
+                    email: widget.email!,
+                  ),
+                ),
+              ),
+              (route) => false,
+            );
+          }
+          return;
+        }
+
+        // Email OTP Login (Non-registration)
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+          );
+        }
+        return;
+      }
+
+
       if (widget.isRegistration) {
         // REGISTRATION FLOW (Requirement 4)
         final reg = widget.registrationData ?? {};
@@ -122,20 +189,28 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
             );
 
         if (mounted) {
+          final l10n = context.l10n;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text(
-                '✓ Account registered successfully! Please log in with your name and mobile number.',
+                '✓ ${l10n.registrationSuccessfulTitle} ${l10n.continueToLoginButton}',
               ),
               backgroundColor: AppColors.primaryGreen,
-              duration: Duration(seconds: 3),
+              duration: const Duration(seconds: 3),
             ),
           );
 
-          // REQUIREMENT 4: Return to Main Login Page after registration
+          // Return to Login Page with pre-filled registered phone number and role
           Navigator.pushAndRemoveUntil(
             context,
-            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            MaterialPageRoute(
+              builder: (_) => LoginScreen(
+                loginHint: LoginHint(
+                  role: widget.role,
+                  phone: widget.phoneNumber,
+                ),
+              ),
+            ),
             (route) => false,
           );
         }
@@ -181,10 +256,52 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   void _handleResendOtp() async {
     if (!_canResend || _isLoading) return;
 
+    final l10n = context.l10n;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
+
+    if (widget.isEmailOtp) {
+      try {
+        await ref.read(currentUserProvider.notifier).sendCustomerEmailOtp(
+              email: widget.email!,
+              phoneNumber: widget.phoneNumber,
+              onCodeSent: (newVerificationId) {
+                if (mounted) {
+                  setState(() {
+                    _currentVerificationId = newVerificationId;
+                    _isLoading = false;
+                  });
+                  _startResendTimer();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('✓ ${l10n.newCodeGeneratedInTerminal} ${widget.email}'),
+                      backgroundColor: AppColors.primaryGreen,
+                    ),
+                  );
+                }
+              },
+              onVerificationFailed: (error) {
+                if (mounted) {
+                  setState(() {
+                    _isLoading = false;
+                    _errorMessage = error.message ?? 'Failed to generate new OTP.';
+                  });
+                }
+              },
+            );
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = e.toString().replaceAll('Exception: ', '');
+          });
+        }
+      }
+      return;
+    }
 
     try {
       await ref.read(currentUserProvider.notifier).sendPhoneOtp(
@@ -197,8 +314,8 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                 });
                 _startResendTimer();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('✓ New OTP code sent to your phone!'),
+                  SnackBar(
+                    content: Text('✓ ${l10n.weSentOtpTo} ${widget.phoneNumber}'),
                     backgroundColor: AppColors.primaryGreen,
                   ),
                 );
@@ -225,14 +342,23 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final displayPhone = widget.phoneNumber.length >= 10
         ? '+91 ${widget.phoneNumber.substring(0, 2)}**** ${widget.phoneNumber.substring(widget.phoneNumber.length - 4)}'
         : widget.phoneNumber;
 
+    final titleText = widget.isEmailOtp
+        ? l10n.emailOtpVerificationTitle
+        : l10n.enterOtpTitle;
+
+    final subtitleText = widget.isEmailOtp
+        ? '${l10n.enterTerminalOtpDesc}\n${widget.email}'
+        : '${l10n.weSentOtpTo}\n$displayPhone';
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'OTP Verification',
+          widget.isEmailOtp ? l10n.emailOtpVerificationTitle : l10n.otpVerificationTitle,
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
         ),
         backgroundColor: AppColors.primaryGreen,
@@ -257,15 +383,15 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                       color: AppColors.primaryGreen.withValues(alpha: 0.3),
                     ),
                   ),
-                  child: const Icon(
-                    Icons.mark_email_read_outlined,
+                  child: Icon(
+                    widget.isEmailOtp ? Icons.terminal_rounded : Icons.mark_email_read_outlined,
                     size: 56,
                     color: AppColors.primaryGreen,
                   ),
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Verify Mobile Number',
+                  titleText,
                   style: GoogleFonts.outfit(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
@@ -274,11 +400,12 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Enter the 6-digit verification code sent to\n$displayPhone',
+                  subtitleText,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 15,
-                    color: AppColors.textSecondary,
+                    color: const Color(0xFF0F172A),
+                    fontWeight: FontWeight.w600,
                     height: 1.4,
                   ),
                 ),
@@ -394,7 +521,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                             ),
                           )
                         : Text(
-                            'VERIFY OTP',
+                            l10n.verifyAndProceed.toUpperCase(),
                             style: GoogleFonts.outfit(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -407,22 +534,15 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
 
                 const SizedBox(height: 24),
 
-                // Resend OTP Countdown
+                // Resend / Generate New Code Countdown
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      "Didn't receive code? ",
-                      style: GoogleFonts.inter(
-                        color: AppColors.textSecondary,
-                        fontSize: 14,
-                      ),
-                    ),
                     if (!_canResend)
                       Text(
-                        'Resend in 00:${_secondsRemaining.toString().padLeft(2, '0')}',
+                        '${l10n.resendCodeIn} 00:${_secondsRemaining.toString().padLeft(2, '0')}',
                         style: GoogleFonts.inter(
-                          color: AppColors.primaryGreen,
+                          color: const Color(0xFF0F172A),
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -431,9 +551,11 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                       TextButton(
                         onPressed: _handleResendOtp,
                         child: Text(
-                          'RESEND OTP',
+                          widget.isEmailOtp
+                              ? l10n.generateNewCode.toUpperCase()
+                              : l10n.resendOtp.toUpperCase(),
                           style: GoogleFonts.inter(
-                            color: AppColors.primaryGreen,
+                            color: const Color(0xFF0F172A),
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -446,12 +568,12 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
 
                 TextButton.icon(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  icon: const Icon(Icons.edit_outlined, size: 18, color: Color(0xFF0F172A)),
                   label: Text(
-                    'Change Mobile Number',
+                    widget.isEmailOtp ? l10n.email : l10n.mobileNumberLabel,
                     style: GoogleFonts.inter(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF0F172A),
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
@@ -460,6 +582,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
           ),
         ),
       ),
+
     );
   }
 }

@@ -13,7 +13,7 @@ class AppColors {
 
   // Background & Surfaces
   static const Color lightBg = Color(0xFFF8FAFC);
-  static const Color cardLight = Colors.white;
+  static const Color cardLight = Color(0xEEFFFFFF); // Frosted half-white surface
   static const Color borderLight = Color(0xFFE2E8F0);
 
   // Badges & Statuses

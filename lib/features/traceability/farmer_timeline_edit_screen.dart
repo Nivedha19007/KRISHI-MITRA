@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/localized_helpers.dart';
 import '../../core/widgets/responsive_center.dart';
 import '../../data/models/batch_model.dart';
 import '../../data/repositories/product_repository.dart';
@@ -120,8 +121,8 @@ class _FarmerTimelineEditScreenState
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('✅ Product timeline saved to Firestore! Public QR updated.'),
+          SnackBar(
+            content: Text('✅ ${context.l10n.timelineSavedSnackbar}'),
             backgroundColor: AppColors.primaryGreen,
           ),
         );
@@ -145,10 +146,11 @@ class _FarmerTimelineEditScreenState
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Edit Product Timeline',
+          l10n.editProductTimelineTitle,
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 20),
         ),
         backgroundColor: AppColors.primaryGreen,
@@ -188,7 +190,7 @@ class _FarmerTimelineEditScreenState
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    'Farmer Journey Editor • ${widget.productName}',
+                                    '${l10n.editProductTimelineTitle} • ${widget.productName}',
                                     style: GoogleFonts.outfit(
                                       fontWeight: FontWeight.bold,
                                       fontSize: 16,
@@ -200,7 +202,7 @@ class _FarmerTimelineEditScreenState
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Enter exact dates and descriptions for each lifecycle stage. Unfilled stages remain pending without fabricated dates.',
+                              l10n.alignCameraNotice,
                               style: GoogleFonts.inter(
                                 fontSize: 13,
                                 color: AppColors.textSecondary,
@@ -208,7 +210,7 @@ class _FarmerTimelineEditScreenState
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Batch ID: ${widget.batchId}',
+                              '${l10n.batchId}: ${widget.batchId}',
                               style: GoogleFonts.inter(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
@@ -232,7 +234,7 @@ class _FarmerTimelineEditScreenState
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Quality Grade & Certification',
+                                l10n.qualityGradeTitle,
                                 style: GoogleFonts.outfit(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -241,19 +243,19 @@ class _FarmerTimelineEditScreenState
                               const SizedBox(height: 12),
                               TextFormField(
                                 controller: _qualityStatusController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Quality Status / Grade',
+                                decoration: InputDecoration(
+                                  labelText: l10n.qualityGradeLabel,
                                   hintText: 'e.g. Grade A+ (Quality Verified)',
-                                  prefixIcon: Icon(Icons.verified_outlined),
+                                  prefixIcon: const Icon(Icons.verified_outlined),
                                 ),
                               ),
                               const SizedBox(height: 12),
                               TextFormField(
                                 controller: _certificateController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Certification Info',
+                                decoration: InputDecoration(
+                                  labelText: l10n.certificationInfoLabel,
                                   hintText: 'e.g. Organic India Certificate #IND-ORG-8821',
-                                  prefixIcon: Icon(Icons.card_membership_outlined),
+                                  prefixIcon: const Icon(Icons.card_membership_outlined),
                                 ),
                               ),
                             ],
@@ -263,7 +265,7 @@ class _FarmerTimelineEditScreenState
                       const SizedBox(height: 24),
 
                       Text(
-                        'Lifecycle Stages (${_milestones.where((m) => m.isCompleted).length} / 7 Completed)',
+                        '${l10n.timelineTitle} (${_milestones.where((m) => m.isCompleted).length} / 7)',
                         style: GoogleFonts.outfit(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -307,8 +309,8 @@ class _FarmerTimelineEditScreenState
                               : const Icon(Icons.save_rounded),
                           label: Text(
                             _isSaving
-                                ? 'SAVING TO FIRESTORE...'
-                                : 'SAVE PRODUCT TIMELINE TO FIRESTORE',
+                                ? l10n.savingTimelineBtn
+                                : l10n.saveTimelineBtn,
                             style: GoogleFonts.outfit(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
@@ -425,7 +427,7 @@ class _FarmerTimelineEditScreenState
                       label: Text(
                         m.timestamp != null
                             ? DateFormat('dd MMM yyyy').format(m.timestamp!)
-                            : 'Select Date',
+                            : context.l10n.selectDate,
                         style: GoogleFonts.inter(fontSize: 13),
                       ),
                     ),
@@ -457,7 +459,7 @@ class _FarmerTimelineEditScreenState
                       label: Text(
                         m.timestamp != null
                             ? DateFormat('hh:mm a').format(m.timestamp!)
-                            : 'Select Time',
+                            : context.l10n.selectTime,
                         style: GoogleFonts.inter(fontSize: 13),
                       ),
                     ),
@@ -467,18 +469,18 @@ class _FarmerTimelineEditScreenState
               const SizedBox(height: 12),
               TextFormField(
                 controller: m.descriptionController,
-                decoration: const InputDecoration(
-                  labelText: 'Event Description',
+                decoration: InputDecoration(
+                  labelText: context.l10n.eventDescription,
                   hintText: 'e.g. Sown high-grade seeds in organic soil',
                 ),
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: m.locationController,
-                decoration: const InputDecoration(
-                  labelText: 'Location',
+                decoration: InputDecoration(
+                  labelText: context.l10n.locationLabel,
                   hintText: 'e.g. Gobichettipalayam, Erode',
-                  prefixIcon: Icon(Icons.location_on_outlined, size: 18),
+                  prefixIcon: const Icon(Icons.location_on_outlined, size: 18),
                 ),
               ),
             ] else ...[

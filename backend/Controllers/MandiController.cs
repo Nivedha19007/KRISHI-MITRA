@@ -40,8 +40,9 @@ public class MandiController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[MANDI_CONTROLLER] Error processing Mandi prices request for State={State}, District={District}, Commodity={Commodity}", state, district, commodity);
-            return StatusCode(500, new
+            return StatusCode(502, new
             {
+                status = "error",
                 error = "Unable to fetch mandi prices.",
                 message = ex.Message
             });

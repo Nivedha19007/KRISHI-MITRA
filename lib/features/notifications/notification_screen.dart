@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/localization/localized_helpers.dart';
 import '../../core/widgets/responsive_center.dart';
 
 class NotificationItem {
@@ -79,6 +80,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notifications 🔔'),
@@ -86,8 +88,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
           TextButton(
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('All notifications marked as read.'),
+                SnackBar(
+                  content: Text(l10n.allNotificationsRead),
                 ),
               );
             },
