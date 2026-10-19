@@ -118,6 +118,7 @@ Purpose	Command
   4. Restore .NET dependencies - dotnet restore  
   5. Build the .NET backend - dotnet build
   6. Run .NET tests - dotnet test
+
 Test results depend on the current project configuration, installed dependencies, and required services.
 
 🗺️ Development Status
