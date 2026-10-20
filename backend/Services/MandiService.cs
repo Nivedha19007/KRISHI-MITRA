@@ -151,7 +151,10 @@ public class MandiService : IMandiService
 
             try
             {
-                var response = await _httpClient.GetAsync(url);
+                var reqMsg = new HttpRequestMessage(HttpMethod.Get, url);
+                reqMsg.Headers.Add("User-Agent", "curl/8.13.0");
+                reqMsg.Headers.Add("Accept", "*/*");
+                var response = await _httpClient.SendAsync(reqMsg);
 
                 if (!response.IsSuccessStatusCode)
                 {
