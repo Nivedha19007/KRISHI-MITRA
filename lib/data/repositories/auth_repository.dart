@@ -1224,6 +1224,60 @@ class AuthRepository {
   }
 
   // ============================================================
+  // QUICK 1-CLICK DEMO LOGIN (Farmer, Customer, Admin)
+  // Bypasses external OTP services for instantaneous demonstration & evaluation
+  // ============================================================
+
+  Future<UserModel> loginAsDemoUser(UserRole role) async {
+    UserModel demoUser;
+    switch (role) {
+      case UserRole.farmer:
+        demoUser = SampleData.sampleUsers.firstWhere(
+          (u) => u.uid == 'farmer_arun',
+          orElse: () => SampleData.sampleUsers.firstWhere((u) => u.role == UserRole.farmer),
+        );
+        break;
+      case UserRole.customer:
+        demoUser = SampleData.sampleUsers.firstWhere(
+          (u) => u.uid == 'customer_priya',
+          orElse: () => SampleData.sampleUsers.firstWhere((u) => u.role == UserRole.customer),
+        );
+        break;
+      case UserRole.admin:
+        demoUser = SampleData.sampleUsers.firstWhere(
+          (u) => u.role == UserRole.admin,
+          orElse: () => UserModel(
+            uid: 'admin_1',
+            name: 'Dr. R. Swaminathan (Agri Officer)',
+            email: 'admin@krishimitra.gov.in',
+            phone: '+91 90000 11111',
+            role: UserRole.admin,
+            state: 'Tamil Nadu',
+            district: 'Chennai',
+            verificationStatus: VerificationStatus.verified,
+          ),
+        );
+        break;
+    }
+
+    _currentUser = demoUser;
+    debugPrint('[AUTH_LOG] loginAsDemoUser: Activated ${demoUser.role.name} (${demoUser.name}) [UID: ${demoUser.uid}]');
+
+    // Attempt to persist or sync demo profile to Firestore if available
+    try {
+      await _firestore.collection('users').doc(demoUser.uid).set(
+        demoUser.toMap(),
+        SetOptions(merge: true),
+      );
+      debugPrint('[AUTH_LOG] loginAsDemoUser: Synced demo profile to Firestore users/${demoUser.uid}');
+    } catch (e) {
+      debugPrint('[AUTH_LOG_WARN] loginAsDemoUser Firestore sync warning: $e');
+    }
+
+    return _currentUser;
+  }
+
+  // ============================================================
   // PHONE NUMBER HELPER (Supports +91 and Fictional Test Numbers)
   // ============================================================
 
@@ -1572,6 +1626,12 @@ class CurrentUserNotifier extends StateNotifier<UserModel> {
 
   void setUser(UserModel user) {
     state = user;
+  }
+
+  Future<UserModel> loginAsDemoUser(UserRole role) async {
+    final user = await _repo.loginAsDemoUser(role);
+    state = user;
+    return user;
   }
 }
 

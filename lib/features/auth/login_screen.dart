@@ -13,6 +13,7 @@ import 'admin_login_screen.dart';
 import 'otp_verification_screen.dart';
 import 'register_screen.dart';
 import 'registration_confirmation_screen.dart' show LoginHint;
+import '../home/main_navigation_screen.dart';
 import '../onboarding/welcome_screen.dart';
 
 enum CustomerAuthMode { email, phone }
@@ -214,6 +215,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         setState(() {
           _isLoading = false;
           _errorMessage = e.toString().replaceAll('Exception: ', '');
+        });
+      }
+    }
+  }
+
+  // ============================================================
+  // 1-CLICK QUICK DEMO LOGIN (Farmer, Consumer, Admin)
+  // Instant bypass of SMS/OTP for effortless demonstration & evaluation
+  // ============================================================
+
+  void _handleQuickDemoLogin(UserRole role) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final user = await ref.read(currentUserProvider.notifier).loginAsDemoUser(role);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Signed in as Demo ${user.role.name.toUpperCase()}: ${user.name}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: AppColors.primaryGreen,
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Demo Login error: ${e.toString().replaceAll('Exception: ', '')}';
         });
       }
     }
@@ -722,6 +774,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 14),
 
+                    // 1-CLICK QUICK DEMO ACCESS CARD
+                    _buildQuickDemoCard(context),
+
+                    const SizedBox(height: 14),
+
                     // DISCREET ADMIN PORTAL LINK
                     TextButton.icon(
                       onPressed: () {
@@ -755,6 +812,179 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       );
+  }
+
+  Widget _buildQuickDemoCard(BuildContext context) {
+    return Card(
+      elevation: 6,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(
+          color: Color(0xFF4ADE80),
+          width: 1.4,
+        ),
+      ),
+      color: Colors.white.withValues(alpha: 0.96),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.bolt_rounded,
+                    color: Colors.amber,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Quick Demo Access',
+                            style: GoogleFonts.outfit(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDCFCE7),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '1-CLICK',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF15803D),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        'Tap any persona below to explore instantly (No OTP needed):',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDemoPersonaButton(
+                    icon: Icons.agriculture_rounded,
+                    roleName: 'Farmer',
+                    personaName: 'Arun Kumar',
+                    color: AppColors.primaryGreen,
+                    bgColor: const Color(0xFFF0FDF4),
+                    borderColor: const Color(0xFF86EFAC),
+                    onTap: () => _handleQuickDemoLogin(UserRole.farmer),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildDemoPersonaButton(
+                    icon: Icons.shopping_basket_rounded,
+                    roleName: 'Consumer',
+                    personaName: 'Priya Sharma',
+                    color: const Color(0xFF0284C7),
+                    bgColor: const Color(0xFFF0F9FF),
+                    borderColor: const Color(0xFF7DD3FC),
+                    onTap: () => _handleQuickDemoLogin(UserRole.customer),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildDemoPersonaButton(
+                    icon: Icons.admin_panel_settings_rounded,
+                    roleName: 'Admin',
+                    personaName: 'Govt. Officer',
+                    color: Colors.purple.shade700,
+                    bgColor: Colors.purple.shade50,
+                    borderColor: Colors.purple.shade200,
+                    onTap: () => _handleQuickDemoLogin(UserRole.admin),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDemoPersonaButton({
+    required IconData icon,
+    required String roleName,
+    required String personaName,
+    required Color color,
+    required Color bgColor,
+    required Color borderColor,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: bgColor,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: _isLoading ? null : onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: borderColor, width: 1.2),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 24),
+              const SizedBox(height: 4),
+              Text(
+                roleName,
+                style: GoogleFonts.outfit(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              Text(
+                personaName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildLangChip(

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/responsive_center.dart';
+import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../verification/admin_dashboard_screen.dart';
 
@@ -26,6 +27,38 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _handleQuickDemoAdminLogin() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await ref.read(currentUserProvider.notifier).loginAsDemoUser(UserRole.admin);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('✓ Signed in as Demo Platform Admin (Dr. R. Swaminathan)'),
+            backgroundColor: Colors.purple.shade700,
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Demo Admin Login error: ${e.toString().replaceAll('Exception: ', '')}';
+        });
+      }
+    }
   }
 
   void _handleAdminLogin() async {
@@ -316,6 +349,49 @@ class _AdminLoginScreenState extends ConsumerState<AdminLoginScreen> {
                                     fontSize: 17,
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 1.1,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                const Expanded(child: Divider()),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  child: Text(
+                                    'OR QUICK EVALUATION',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey.shade600,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                                const Expanded(child: Divider()),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            SizedBox(
+                              height: 48,
+                              child: OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.purple.shade700,
+                                  backgroundColor: Colors.purple.shade50,
+                                  side: BorderSide(color: Colors.purple.shade300, width: 1.4),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                onPressed: _isLoading ? null : _handleQuickDemoAdminLogin,
+                                icon: const Icon(Icons.flash_on_rounded, color: Colors.amber, size: 22),
+                                label: Text(
+                                  '1-CLICK DEMO ADMIN LOGIN',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.8,
                                   ),
                                 ),
                               ),
