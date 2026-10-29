@@ -79,6 +79,9 @@ Analyze the application:
 Run the available tests:
 ```flutter test```
 
+Run the application:
+```flutter run```
+
 3. Configure Firebase
 
   - Use the appropriate Firebase project for your environment.
