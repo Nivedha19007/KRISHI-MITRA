@@ -30,21 +30,21 @@ KrishiMitra is an agriculture-focused digital platform that connects farmers dir
 🏗️ Project Structure
 
 KrishiMitra/
-├── android/              # Android platform configuration
-├── assets/               # Images and other application assets
-├── backend/              # C#/.NET backend application
-│   ├── Controllers/      # API controllers
-│   ├── Models/           # Data models
-│   ├── Services/         # Application services
-│   └── Properties/       # Backend launch settings
-├── lib/                  # Flutter application source code
-│   ├── core/             # Shared configuration and core utilities
-│   ├── features/         # Feature-specific screens and logic
-│   └── l10n/             # Localization resources
-├── test/                 # Flutter tests
-├── firestore.rules       # Firestore security rules, if present
-├── .gitignore            # Git exclusion rules
-└── README.md             # Project documentation
+├── android/              
+├── assets/               
+├── backend/              
+│   ├── Controllers/      
+│   ├── Models/           
+│   ├── Services/        
+│   └── Properties/       
+├── lib/                  
+│   ├── core/             
+│   ├── features/         
+│   └── l10n/             
+├── test/                
+├── firestore.rules       
+├── .gitignore           
+└── README.md             
 
 The structure above is an overview. Actual directories and files may differ.
 
